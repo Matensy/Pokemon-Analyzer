@@ -3,8 +3,8 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - claude/pokemon-data-ai-battles-8R8nw
       - main
+      - claude/pokemon-movesets-weakness-Immip
 
 permissions:
   contents: read
