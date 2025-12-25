@@ -1,180 +1,644 @@
-/* Battle Animations */
+/* ========================================
+   POKEMON BATTLE ANIMATIONS - ENHANCED
+   ======================================== */
 
+/* Base Animations */
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-10px); }
-  75% { transform: translateX(10px); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-8px) rotate(-1deg); }
+  20%, 40%, 60%, 80% { transform: translateX(8px) rotate(1deg); }
+}
+
+@keyframes shake-heavy {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  10% { transform: translate(-15px, -5px) rotate(-3deg); }
+  20% { transform: translate(15px, 5px) rotate(3deg); }
+  30% { transform: translate(-15px, 5px) rotate(-3deg); }
+  40% { transform: translate(15px, -5px) rotate(3deg); }
+  50% { transform: translate(-10px, 0) rotate(-2deg); }
+  60% { transform: translate(10px, 0) rotate(2deg); }
+  70% { transform: translate(-5px, 0) rotate(-1deg); }
+  80% { transform: translate(5px, 0) rotate(1deg); }
 }
 
 @keyframes flash-damage {
   0%, 100% { opacity: 1; filter: brightness(1); }
-  50% { opacity: 0.3; filter: brightness(3); }
+  25% { opacity: 0.2; filter: brightness(3) saturate(0); }
+  50% { opacity: 1; filter: brightness(1.5) hue-rotate(30deg); }
+  75% { opacity: 0.3; filter: brightness(2) saturate(0); }
 }
 
+@keyframes flash-white {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(5) saturate(0); }
+}
+
+/* Entry Animations */
 @keyframes slide-in-left {
-  from { transform: translateX(-100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+  from { transform: translateX(-200%) scale(0.5); opacity: 0; }
+  to { transform: translateX(0) scale(1); opacity: 1; }
 }
 
 @keyframes slide-in-right {
-  from { transform: translateX(100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+  from { transform: translateX(200%) scale(0.5); opacity: 0; }
+  to { transform: translateX(0) scale(1); opacity: 1; }
 }
 
-@keyframes bounce {
+@keyframes pokeball-release {
+  0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+  40% { transform: scale(1.3) rotate(0deg); opacity: 1; }
+  60% { transform: scale(0.9) rotate(10deg); }
+  80% { transform: scale(1.1) rotate(-5deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+@keyframes pokemon-appear {
+  0% {
+    transform: scale(0) translateY(50px);
+    opacity: 0;
+    filter: brightness(10) blur(20px);
+  }
+  30% {
+    transform: scale(1.2) translateY(-20px);
+    opacity: 1;
+    filter: brightness(3) blur(5px);
+  }
+  50% {
+    transform: scale(0.95) translateY(10px);
+    filter: brightness(1.5) blur(0);
+  }
+  70% {
+    transform: scale(1.05) translateY(-5px);
+    filter: brightness(1.2);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+    filter: brightness(1);
+  }
+}
+
+/* Idle Animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+}
+
+@keyframes float-subtle {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50% { transform: translateY(-6px) scale(1.02); }
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+@keyframes idle-bounce {
   0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-  40% { transform: translateY(-20px); }
-  60% { transform: translateY(-10px); }
+  40% { transform: translateY(-15px); }
+  60% { transform: translateY(-8px); }
 }
 
+/* Attack Animations */
+@keyframes attack-lunge {
+  0% { transform: translateX(0) scale(1); }
+  25% { transform: translateX(-20px) scale(1.1); }
+  50% { transform: translateX(80px) scale(1.15) rotate(5deg); }
+  75% { transform: translateX(30px) scale(1.05); }
+  100% { transform: translateX(0) scale(1); }
+}
+
+@keyframes attack-lunge-reverse {
+  0% { transform: translateX(0) scale(1); }
+  25% { transform: translateX(20px) scale(1.1); }
+  50% { transform: translateX(-80px) scale(1.15) rotate(-5deg); }
+  75% { transform: translateX(-30px) scale(1.05); }
+  100% { transform: translateX(0) scale(1); }
+}
+
+@keyframes attack-special-charge {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  30% {
+    transform: scale(1.2);
+    filter: brightness(1.5) drop-shadow(0 0 30px currentColor);
+  }
+  60% {
+    transform: scale(0.9);
+    filter: brightness(2) drop-shadow(0 0 50px currentColor);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+@keyframes energy-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 30px 15px rgba(255, 255, 255, 0.3);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
+/* Damage Received */
+@keyframes hit-recoil {
+  0% { transform: translateX(0) rotate(0deg); }
+  20% { transform: translateX(-30px) rotate(-10deg); }
+  40% { transform: translateX(20px) rotate(5deg); }
+  60% { transform: translateX(-10px) rotate(-3deg); }
+  80% { transform: translateX(5px) rotate(1deg); }
+  100% { transform: translateX(0) rotate(0deg); }
+}
+
+@keyframes hit-recoil-reverse {
+  0% { transform: translateX(0) rotate(0deg); }
+  20% { transform: translateX(30px) rotate(10deg); }
+  40% { transform: translateX(-20px) rotate(-5deg); }
+  60% { transform: translateX(10px) rotate(3deg); }
+  80% { transform: translateX(-5px) rotate(-1deg); }
+  100% { transform: translateX(0) rotate(0deg); }
+}
+
+/* Critical Hit */
 @keyframes critical-flash {
   0%, 100% {
     transform: scale(1) rotate(0deg);
     filter: brightness(1);
   }
-  25% {
-    transform: scale(1.3) rotate(-5deg);
-    filter: brightness(2) drop-shadow(0 0 20px yellow);
+  15% {
+    transform: scale(1.4) rotate(-8deg);
+    filter: brightness(3) drop-shadow(0 0 40px #FFD700);
+  }
+  30% {
+    transform: scale(1.2) rotate(8deg);
+    filter: brightness(4) drop-shadow(0 0 60px #FFA500);
   }
   50% {
-    transform: scale(1.2) rotate(5deg);
-    filter: brightness(3) drop-shadow(0 0 30px gold);
+    transform: scale(1.5) rotate(-5deg);
+    filter: brightness(5) drop-shadow(0 0 80px #FF4500);
+  }
+  70% {
+    transform: scale(1.3) rotate(5deg);
+    filter: brightness(3) drop-shadow(0 0 50px #FFD700);
+  }
+}
+
+@keyframes critical-screen-shake {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-10px, -5px); }
+  20% { transform: translate(10px, 5px); }
+  30% { transform: translate(-8px, 3px); }
+  40% { transform: translate(8px, -3px); }
+  50% { transform: translate(-5px, 5px); }
+  60% { transform: translate(5px, -5px); }
+  70% { transform: translate(-3px, 2px); }
+  80% { transform: translate(3px, -2px); }
+}
+
+/* Super Effective */
+@keyframes super-effective-impact {
+  0% { transform: scale(1); filter: brightness(1); }
+  20% { transform: scale(1.3); filter: brightness(2) saturate(1.5); }
+  40% { transform: scale(0.9); filter: brightness(1.5); }
+  60% { transform: scale(1.15); filter: brightness(1.8); }
+  80% { transform: scale(0.95); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+/* Faint Animation */
+@keyframes faint {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+    opacity: 1;
+    filter: brightness(1);
+  }
+  30% {
+    transform: translateY(-20px) rotate(-10deg) scale(1.1);
+    opacity: 1;
+    filter: brightness(0.5);
+  }
+  60% {
+    transform: translateY(30px) rotate(15deg) scale(0.9);
+    opacity: 0.7;
+    filter: brightness(0.3) grayscale(1);
+  }
+  100% {
+    transform: translateY(100px) rotate(30deg) scale(0.5);
+    opacity: 0;
+    filter: brightness(0) grayscale(1);
+  }
+}
+
+/* Mega Evolution */
+@keyframes mega-evolution {
+  0% {
+    transform: scale(1);
+    filter: brightness(1) hue-rotate(0deg);
+  }
+  25% {
+    transform: scale(1.5);
+    filter: brightness(3) hue-rotate(180deg) drop-shadow(0 0 50px #EC4899);
+  }
+  50% {
+    transform: scale(0.8);
+    filter: brightness(5) hue-rotate(360deg) drop-shadow(0 0 80px #EC4899);
   }
   75% {
-    transform: scale(1.3) rotate(-5deg);
-    filter: brightness(2) drop-shadow(0 0 20px yellow);
+    transform: scale(1.3);
+    filter: brightness(2) hue-rotate(180deg) drop-shadow(0 0 60px #EC4899);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1) hue-rotate(0deg) drop-shadow(0 0 20px #EC4899);
   }
 }
 
-@keyframes super-effective {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.5); }
-  100% { transform: scale(1); }
-}
-
-@keyframes not-effective {
-  0%, 100% { transform: translateX(0); }
-  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-  20%, 40%, 60%, 80% { transform: translateX(5px); }
-}
-
-@keyframes hp-decrease {
-  0% { transform: scaleX(1); }
-  50% { transform: scaleX(0.95); }
-  100% { transform: scaleX(1); }
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-}
-
-@keyframes attack-physical {
-  0% { transform: translateX(0) scale(1); }
-  30% { transform: translateX(50px) scale(1.2); }
-  50% { transform: translateX(50px) scale(1.2); }
-  100% { transform: translateX(0) scale(1); }
-}
-
-@keyframes attack-special {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.5); opacity: 0.5; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-@keyframes faint {
-  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-  50% { transform: translateY(20px) rotate(10deg); opacity: 0.5; }
-  100% { transform: translateY(40px) rotate(20deg); opacity: 0; }
-}
-
-@keyframes text-popup {
-  0% {
-    transform: translateY(20px) scale(0.8);
-    opacity: 0;
+@keyframes mega-aura {
+  0%, 100% {
+    box-shadow: 0 0 20px 10px rgba(236, 72, 153, 0.3);
   }
   50% {
-    transform: translateY(0) scale(1.2);
+    box-shadow: 0 0 40px 20px rgba(236, 72, 153, 0.6);
+  }
+}
+
+/* Dynamax */
+@keyframes dynamax-grow {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  30% {
+    transform: scale(0.8);
+    filter: brightness(2) drop-shadow(0 0 30px #FF0066);
+  }
+  60% {
+    transform: scale(2);
+    filter: brightness(1.5) drop-shadow(0 0 60px #FF0066);
+  }
+  80% {
+    transform: scale(1.8);
+    filter: brightness(1.2) drop-shadow(0 0 40px #FF0066);
+  }
+  100% {
+    transform: scale(1.8);
+    filter: brightness(1) drop-shadow(0 0 30px #FF0066);
+  }
+}
+
+@keyframes dynamax-clouds {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes dynamax-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 20px #FF0066);
+  }
+  50% {
+    filter: drop-shadow(0 0 50px #FF0066) drop-shadow(0 0 80px #FF3399);
+  }
+}
+
+/* Terastallize */
+@keyframes terastallize {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  25% {
+    transform: scale(1.2) rotate(5deg);
+    filter: brightness(2) saturate(2);
+  }
+  50% {
+    transform: scale(1.3) rotate(-5deg);
+    filter: brightness(3) saturate(3) contrast(1.2);
+  }
+  75% {
+    transform: scale(1.1) rotate(3deg);
+    filter: brightness(2) saturate(2);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1.2) saturate(1.5);
+  }
+}
+
+@keyframes tera-sparkle {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1) rotate(180deg);
+  }
+}
+
+@keyframes crystal-shimmer {
+  0% { filter: hue-rotate(0deg) brightness(1); }
+  50% { filter: hue-rotate(30deg) brightness(1.3); }
+  100% { filter: hue-rotate(0deg) brightness(1); }
+}
+
+/* Text Popups */
+@keyframes text-popup {
+  0% {
+    transform: translateY(30px) scale(0.5);
+    opacity: 0;
+  }
+  30% {
+    transform: translateY(-10px) scale(1.3);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    transform: translateY(-40px) scale(0.8);
+    opacity: 0;
+  }
+}
+
+@keyframes damage-pop {
+  0% {
+    transform: translateY(0) scale(0);
+    opacity: 0;
+  }
+  20% {
+    transform: translateY(-30px) scale(1.5);
+    opacity: 1;
+  }
+  40% {
+    transform: translateY(-50px) scale(1.2);
+  }
+  100% {
+    transform: translateY(-80px) scale(0.8);
+    opacity: 0;
+  }
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-25px); }
+  60% { transform: translateY(-12px); }
+}
+
+/* Particle Effects */
+@keyframes particle-rise {
+  0% {
+    transform: translateY(0) scale(1);
     opacity: 1;
   }
   100% {
-    transform: translateY(-20px) scale(1);
+    transform: translateY(-100px) scale(0);
     opacity: 0;
   }
 }
 
-.sprite-shake {
+@keyframes sparkle {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1) rotate(180deg);
+  }
+}
+
+@keyframes explosion-ring {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(3);
+    opacity: 0;
+  }
+}
+
+/* HP Bar Animations */
+@keyframes hp-decrease {
+  0% { transform: scaleX(1); }
+  20% { transform: scaleX(1.05); }
+  100% { transform: scaleX(1); }
+}
+
+@keyframes hp-critical {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes hp-heal {
+  0% { filter: brightness(1); }
+  50% { filter: brightness(1.5) drop-shadow(0 0 10px #22C55E); }
+  100% { filter: brightness(1); }
+}
+
+/* ========================================
+   ANIMATION CLASSES
+   ======================================== */
+
+/* Shake */
+.animate-shake {
   animation: shake 0.5s ease-in-out;
 }
 
-.sprite-damage {
-  animation: flash-damage 0.3s ease-in-out;
+.animate-shake-heavy {
+  animation: shake-heavy 0.8s ease-in-out;
 }
 
-.sprite-critical {
-  animation: critical-flash 0.8s ease-in-out;
+/* Damage */
+.animate-damage {
+  animation: flash-damage 0.4s ease-in-out, hit-recoil 0.6s ease-out;
 }
 
-.sprite-faint {
-  animation: faint 1s ease-in-out forwards;
+.animate-damage-reverse {
+  animation: flash-damage 0.4s ease-in-out, hit-recoil-reverse 0.6s ease-out;
 }
 
-.sprite-float {
-  animation: float 2s ease-in-out infinite;
+.animate-critical {
+  animation: critical-flash 1s ease-in-out;
 }
 
-.attack-physical-anim {
-  animation: attack-physical 0.6s ease-in-out;
+/* Attack */
+.animate-attack {
+  animation: attack-lunge 0.6s ease-in-out;
 }
 
-.attack-special-anim {
-  animation: attack-special 0.6s ease-in-out;
+.animate-attack-reverse {
+  animation: attack-lunge-reverse 0.6s ease-in-out;
 }
 
-.hp-bar-decrease {
-  animation: hp-decrease 0.3s ease-in-out;
+.animate-special-attack {
+  animation: attack-special-charge 0.8s ease-in-out;
 }
 
-.super-effective-text {
-  animation: super-effective 0.5s ease-in-out;
+/* Entry */
+.animate-appear {
+  animation: pokemon-appear 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.not-effective-text {
-  animation: not-effective 0.5s ease-in-out;
+.animate-slide-left {
+  animation: slide-in-left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.battle-text-popup {
-  position: absolute;
-  font-size: 2rem;
-  font-weight: bold;
-  text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+.animate-slide-right {
+  animation: slide-in-right 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Idle */
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-float-subtle {
+  animation: float-subtle 2.5s ease-in-out infinite;
+}
+
+.animate-breathe {
+  animation: breathe 2s ease-in-out infinite;
+}
+
+.animate-bounce {
+  animation: idle-bounce 1s ease-out;
+}
+
+/* Faint */
+.animate-faint {
+  animation: faint 1.2s ease-in forwards;
+}
+
+/* Mechanics */
+.animate-mega {
+  animation: mega-evolution 1.5s ease-in-out;
+}
+
+.animate-mega-aura {
+  animation: mega-aura 2s ease-in-out infinite;
+}
+
+.animate-dynamax {
+  animation: dynamax-grow 1.2s ease-out forwards;
+}
+
+.animate-dynamax-pulse {
+  animation: dynamax-pulse 1.5s ease-in-out infinite;
+}
+
+.animate-tera {
+  animation: terastallize 1s ease-in-out;
+}
+
+.animate-crystal {
+  animation: crystal-shimmer 2s ease-in-out infinite;
+}
+
+/* Text */
+.animate-text-popup {
   animation: text-popup 2s ease-out forwards;
-  pointer-events: none;
-  z-index: 1000;
 }
 
-.slide-in-left {
-  animation: slide-in-left 0.5s ease-out;
+.animate-damage-number {
+  animation: damage-pop 1.5s ease-out forwards;
 }
 
-.slide-in-right {
-  animation: slide-in-right 0.5s ease-out;
+/* HP */
+.animate-hp-decrease {
+  animation: hp-decrease 0.4s ease-out;
 }
 
-.bounce-in {
-  animation: bounce 1s ease-out;
+.animate-hp-critical {
+  animation: hp-critical 0.5s ease-in-out infinite;
 }
 
-/* Battle Field Effects */
-.battle-field {
+.animate-hp-heal {
+  animation: hp-heal 0.6s ease-out;
+}
+
+/* Super Effective */
+.animate-super-effective {
+  animation: super-effective-impact 0.6s ease-out;
+}
+
+/* Screen Effects */
+.screen-shake {
+  animation: critical-screen-shake 0.5s ease-out;
+}
+
+/* ========================================
+   SPRITE EFFECTS
+   ======================================== */
+
+.sprite-container {
+  position: relative;
+  display: inline-block;
+}
+
+.sprite-glow {
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+}
+
+.sprite-mega {
+  filter: drop-shadow(0 0 20px #EC4899) drop-shadow(0 0 40px #EC4899);
+}
+
+.sprite-dynamax {
+  filter: drop-shadow(0 0 30px #FF0066) drop-shadow(0 0 60px #FF3399);
+  transform: scale(1.5);
+  transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.sprite-tera {
+  filter: drop-shadow(0 0 15px currentColor) saturate(1.5) brightness(1.2);
+}
+
+.sprite-shiny {
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+/* Pokemon Platform Shadow */
+.pokemon-shadow {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 20px;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.4) 0%, transparent 70%);
+  border-radius: 50%;
+  z-index: -1;
+}
+
+.pokemon-shadow-large {
+  width: 150px;
+  height: 30px;
+}
+
+/* ========================================
+   BATTLE FIELD EFFECTS
+   ======================================== */
+
+.battle-arena {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(to bottom, #87CEEB 0%, #98D8E8 50%, #90C890 100%);
-  border-radius: 16px;
-  padding: 40px;
+  border-radius: 24px;
 }
 
-.battle-field::before {
+.battle-arena::before {
   content: '';
   position: absolute;
   top: 0;
@@ -182,114 +646,266 @@
   right: 0;
   bottom: 0;
   background:
-    radial-gradient(circle at 20% 30%, rgba(255,255,255,0.3) 0%, transparent 50%),
-    radial-gradient(circle at 80% 70%, rgba(255,255,255,0.2) 0%, transparent 50%);
+    radial-gradient(circle at 20% 30%, rgba(255,255,255,0.15) 0%, transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(255,255,255,0.1) 0%, transparent 40%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Weather Effects */
+.weather-rain {
+  background: linear-gradient(
+    180deg,
+    rgba(100, 149, 237, 0.3) 0%,
+    rgba(70, 130, 180, 0.2) 100%
+  );
+}
+
+.weather-sun {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 200, 100, 0.3) 0%,
+    rgba(255, 150, 50, 0.2) 100%
+  );
+}
+
+.weather-sandstorm {
+  background: linear-gradient(
+    180deg,
+    rgba(210, 180, 140, 0.4) 0%,
+    rgba(194, 178, 128, 0.3) 100%
+  );
+}
+
+.weather-hail {
+  background: linear-gradient(
+    180deg,
+    rgba(200, 230, 255, 0.3) 0%,
+    rgba(150, 200, 255, 0.2) 100%
+  );
+}
+
+/* ========================================
+   DAMAGE NUMBERS & TEXT
+   ======================================== */
+
+.damage-number {
+  position: absolute;
+  font-size: 2.5rem;
+  font-weight: 900;
+  font-family: 'Arial Black', sans-serif;
+  color: #FF4444;
+  text-shadow:
+    3px 3px 0 #000,
+    -2px -2px 0 #000,
+    2px -2px 0 #000,
+    -2px 2px 0 #000,
+    0 3px 0 #000,
+    3px 0 0 #000,
+    0 -3px 0 #000,
+    -3px 0 0 #000;
+  z-index: 100;
   pointer-events: none;
 }
 
-/* Pokemon Platform */
-.pokemon-platform {
-  position: relative;
-  width: 150px;
-  height: 30px;
-  background: radial-gradient(ellipse at center, rgba(0,0,0,0.3) 0%, transparent 70%);
-  border-radius: 50%;
-  margin: 0 auto;
-}
-
-/* Type Effectiveness Badge */
-.effectiveness-badge {
-  display: inline-block;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  margin-left: 8px;
-  animation: bounce 0.5s ease-out;
-}
-
-.effectiveness-super {
-  background: linear-gradient(135deg, #ff4444, #cc0000);
-  color: white;
-  box-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
-}
-
-.effectiveness-not {
-  background: linear-gradient(135deg, #888, #555);
-  color: white;
-}
-
-.effectiveness-immune {
-  background: linear-gradient(135deg, #333, #000);
-  color: white;
-}
-
-.effectiveness-normal {
-  background: linear-gradient(135deg, #4CAF50, #388E3C);
-  color: white;
-}
-
-/* Damage Numbers */
-.damage-number {
-  position: absolute;
-  font-size: 3rem;
-  font-weight: 900;
-  color: #ff4444;
-  text-shadow:
-    3px 3px 0 #000,
-    -1px -1px 0 #000,
-    1px -1px 0 #000,
-    -1px 1px 0 #000;
-  animation: text-popup 1.5s ease-out forwards;
-  z-index: 100;
-}
-
 .damage-critical {
-  color: #ffeb3b;
-  font-size: 4rem;
+  font-size: 3.5rem;
+  color: #FFD700;
   text-shadow:
-    3px 3px 0 #ff5722,
-    -1px -1px 0 #ff5722,
-    1px -1px 0 #ff5722,
-    -1px 1px 0 #ff5722;
+    4px 4px 0 #FF4500,
+    -2px -2px 0 #FF4500,
+    2px -2px 0 #FF4500,
+    -2px 2px 0 #FF4500;
 }
 
-/* Status Icons */
-.status-icon {
+.damage-heal {
+  color: #22C55E;
+  text-shadow:
+    3px 3px 0 #166534,
+    -2px -2px 0 #166534,
+    2px -2px 0 #166534,
+    -2px 2px 0 #166534;
+}
+
+.effect-text {
+  position: absolute;
+  font-size: 1.5rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.effect-super {
+  color: #FF4444;
+  text-shadow: 0 0 20px #FF0000, 2px 2px 0 #000;
+}
+
+.effect-not {
+  color: #888888;
+  text-shadow: 2px 2px 0 #000;
+}
+
+.effect-immune {
+  color: #444444;
+  text-shadow: 2px 2px 0 #000;
+}
+
+/* ========================================
+   STATUS BADGES
+   ======================================== */
+
+.status-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  font-size: 0.8rem;
-  font-weight: bold;
-  margin-left: 8px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
   animation: bounce 0.5s ease-out;
 }
 
 .status-burn {
-  background: linear-gradient(135deg, #ff6b6b, #c92a2a);
-  color: white;
+  background: linear-gradient(135deg, #FF6B6B, #C92A2A);
+  box-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
 }
 
 .status-poison {
-  background: linear-gradient(135deg, #a855f7, #7c3aed);
-  color: white;
+  background: linear-gradient(135deg, #A855F7, #7C3AED);
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
 }
 
 .status-paralysis {
-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
-  color: white;
+  background: linear-gradient(135deg, #FBBF24, #F59E0B);
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
 }
 
 .status-sleep {
-  background: linear-gradient(135deg, #60a5fa, #3b82f6);
-  color: white;
+  background: linear-gradient(135deg, #60A5FA, #3B82F6);
+  box-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
 }
 
 .status-freeze {
-  background: linear-gradient(135deg, #67e8f9, #06b6d4);
-  color: white;
+  background: linear-gradient(135deg, #67E8F9, #06B6D4);
+  box-shadow: 0 0 10px rgba(103, 232, 249, 0.5);
+}
+
+.status-confused {
+  background: linear-gradient(135deg, #F472B6, #EC4899);
+  box-shadow: 0 0 10px rgba(244, 114, 182, 0.5);
+}
+
+/* ========================================
+   MECHANIC BADGES
+   ======================================== */
+
+.badge-mega {
+  background: linear-gradient(135deg, #EC4899, #BE185D);
+  box-shadow: 0 0 15px rgba(236, 72, 153, 0.6);
+  animation: mega-aura 2s ease-in-out infinite;
+}
+
+.badge-dynamax {
+  background: linear-gradient(135deg, #FF0066, #CC0052);
+  box-shadow: 0 0 20px rgba(255, 0, 102, 0.6);
+  animation: dynamax-pulse 1.5s ease-in-out infinite;
+}
+
+.badge-tera {
+  background: linear-gradient(135deg, var(--tera-color, #A855F7), var(--tera-color-dark, #7C3AED));
+  box-shadow: 0 0 15px var(--tera-color, rgba(168, 85, 247, 0.6));
+  animation: crystal-shimmer 2s ease-in-out infinite;
+}
+
+/* ========================================
+   CARD HOVER EFFECTS
+   ======================================== */
+
+.pokemon-card-hover {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.pokemon-card-hover:hover {
+  transform: translateY(-10px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.pokemon-card-hover:hover .card-sprite {
+  animation: float-subtle 1s ease-in-out infinite;
+}
+
+.pokemon-card-hover:active {
+  transform: translateY(-5px) scale(0.98);
+}
+
+/* Card Shine Effect */
+.card-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-shine::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 70%
+  );
+  transform: rotate(45deg) translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.card-shine:hover::after {
+  transform: rotate(45deg) translateX(100%);
+}
+
+/* ========================================
+   LOADING ANIMATIONS
+   ======================================== */
+
+@keyframes pokeball-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pokeball-bounce {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-20px) rotate(-15deg); }
+  50% { transform: translateY(0) rotate(0deg); }
+  75% { transform: translateY(-10px) rotate(15deg); }
+}
+
+.loading-pokeball {
+  animation: pokeball-spin 1s linear infinite;
+}
+
+.loading-bounce {
+  animation: pokeball-bounce 1.5s ease-in-out infinite;
+}
+
+/* ========================================
+   RESPONSIVE ADJUSTMENTS
+   ======================================== */
+
+@media (max-width: 768px) {
+  .damage-number {
+    font-size: 1.8rem;
+  }
+
+  .damage-critical {
+    font-size: 2.5rem;
+  }
+
+  .effect-text {
+    font-size: 1.2rem;
+  }
 }
