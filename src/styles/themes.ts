@@ -1,92 +1,123 @@
-// Custom Theme Configuration - Purple & White (Light) / Purple & Black (Dark)
+// Theme Configuration - White/Purple (Light) & Purple/Black (Dark)
+// Inspired by modern Pokemon sites like pokemondb.net
 
 export const lightTheme = {
   name: 'light',
   colors: {
-    // Primary - Purple tones
-    primary: '#8B5CF6',        // Vibrant Purple
-    primaryDark: '#7C3AED',    // Darker Purple
-    primaryLight: '#A78BFA',   // Light Purple
+    // Primary - Purple tones (main brand color)
+    primary: '#7C3AED',           // Vibrant Purple
+    primaryDark: '#6D28D9',       // Darker Purple
+    primaryLight: '#8B5CF6',      // Light Purple
+    primaryGlow: 'rgba(124, 58, 237, 0.15)',
 
-    // Background - White based
+    // Background - Clean white
     bgPrimary: '#FFFFFF',
-    bgSecondary: '#F9FAFB',
-    bgTertiary: '#F3F4F6',
+    bgSecondary: '#FAFAFB',
+    bgTertiary: '#F4F4F5',
     bgCard: '#FFFFFF',
-    bgHover: '#F3F4F6',
+    bgHover: '#F4F4F5',
+    bgGlass: 'rgba(255, 255, 255, 0.9)',
 
     // Text
-    textPrimary: '#1F2937',
-    textSecondary: '#6B7280',
-    textMuted: '#9CA3AF',
+    textPrimary: '#18181B',
+    textSecondary: '#52525B',
+    textMuted: '#A1A1AA',
+    textInverse: '#FFFFFF',
 
     // Accents
-    accent1: '#8B5CF6',        // Purple
-    accent2: '#EC4899',        // Pink
-    accent3: '#F59E0B',        // Amber
-    accent4: '#10B981',        // Green
+    accent1: '#7C3AED',           // Purple
+    accent2: '#EC4899',           // Pink
+    accent3: '#F59E0B',           // Amber/Gold
+    accent4: '#10B981',           // Emerald
 
     // Borders & Shadows
-    border: '#E5E7EB',
-    borderLight: '#F3F4F6',
-    shadow: 'rgba(139, 92, 246, 0.1)',
-    shadowHover: 'rgba(139, 92, 246, 0.2)',
+    border: '#E4E4E7',
+    borderLight: '#F4F4F5',
+    borderFocus: '#7C3AED',
+    shadow: 'rgba(0, 0, 0, 0.08)',
+    shadowHover: 'rgba(124, 58, 237, 0.15)',
+    shadowCard: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
 
     // Status colors
     success: '#10B981',
     warning: '#F59E0B',
     error: '#EF4444',
     info: '#3B82F6',
+
+    // Specific UI elements
+    navBg: '#FFFFFF',
+    navBorder: '#E4E4E7',
+    cardBg: '#FFFFFF',
+    inputBg: '#FFFFFF',
+    buttonPrimaryBg: '#7C3AED',
+    buttonSecondaryBg: '#F4F4F5',
   },
   gradients: {
-    primary: 'linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)',
-    secondary: 'linear-gradient(135deg, #A78BFA 0%, #F9A8D4 100%)',
-    card: 'linear-gradient(to bottom, #FFFFFF, #F9FAFB)',
+    primary: 'linear-gradient(135deg, #7C3AED 0%, #A855F7 50%, #EC4899 100%)',
+    secondary: 'linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%)',
+    card: 'linear-gradient(180deg, #FFFFFF 0%, #FAFAFB 100%)',
+    hero: 'linear-gradient(135deg, #7C3AED 0%, #9333EA 50%, #C026D3 100%)',
+    glow: 'radial-gradient(circle at center, rgba(124, 58, 237, 0.2) 0%, transparent 70%)',
   }
 };
 
 export const darkTheme = {
   name: 'dark',
   colors: {
-    // Primary - Purple tones
-    primary: '#A78BFA',        // Light Purple for dark bg
-    primaryDark: '#8B5CF6',    // Medium Purple
-    primaryLight: '#C4B5FD',   // Very Light Purple
+    // Primary - Lighter Purple for dark backgrounds
+    primary: '#A78BFA',           // Light Purple
+    primaryDark: '#8B5CF6',       // Medium Purple
+    primaryLight: '#C4B5FD',      // Very Light Purple
+    primaryGlow: 'rgba(167, 139, 250, 0.2)',
 
-    // Background - Black based with purple hints
-    bgPrimary: '#0F0F0F',      // Pure Black
-    bgSecondary: '#1A1625',    // Dark Purple-Black
-    bgTertiary: '#231D2E',     // Lighter Purple-Black
-    bgCard: '#1A1625',
-    bgHover: '#2D2640',
+    // Background - Deep purple-black
+    bgPrimary: '#09090B',         // Almost black
+    bgSecondary: '#18181B',       // Dark zinc
+    bgTertiary: '#1F1B2E',        // Dark purple tint
+    bgCard: '#18181B',
+    bgHover: '#27272A',
+    bgGlass: 'rgba(24, 24, 27, 0.9)',
 
     // Text
-    textPrimary: '#F9FAFB',
-    textSecondary: '#D1D5DB',
-    textMuted: '#9CA3AF',
+    textPrimary: '#FAFAFA',
+    textSecondary: '#A1A1AA',
+    textMuted: '#71717A',
+    textInverse: '#18181B',
 
     // Accents
-    accent1: '#A78BFA',        // Light Purple
-    accent2: '#F472B6',        // Pink
-    accent3: '#FBBF24',        // Amber
-    accent4: '#34D399',        // Green
+    accent1: '#A78BFA',           // Light Purple
+    accent2: '#F472B6',           // Pink
+    accent3: '#FBBF24',           // Amber/Gold
+    accent4: '#34D399',           // Emerald
 
     // Borders & Shadows
-    border: '#2D2640',
-    borderLight: '#3D3452',
-    shadow: 'rgba(167, 139, 250, 0.2)',
-    shadowHover: 'rgba(167, 139, 250, 0.3)',
+    border: '#27272A',
+    borderLight: '#3F3F46',
+    borderFocus: '#A78BFA',
+    shadow: 'rgba(0, 0, 0, 0.4)',
+    shadowHover: 'rgba(167, 139, 250, 0.25)',
+    shadowCard: '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2)',
 
     // Status colors
     success: '#34D399',
     warning: '#FBBF24',
     error: '#F87171',
     info: '#60A5FA',
+
+    // Specific UI elements
+    navBg: '#09090B',
+    navBorder: '#27272A',
+    cardBg: '#18181B',
+    inputBg: '#27272A',
+    buttonPrimaryBg: '#7C3AED',
+    buttonSecondaryBg: '#27272A',
   },
   gradients: {
-    primary: 'linear-gradient(135deg, #A78BFA 0%, #F472B6 100%)',
-    secondary: 'linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)',
-    card: 'linear-gradient(to bottom, #1A1625, #231D2E)',
+    primary: 'linear-gradient(135deg, #7C3AED 0%, #9333EA 50%, #C026D3 100%)',
+    secondary: 'linear-gradient(135deg, #6D28D9 0%, #8B5CF6 100%)',
+    card: 'linear-gradient(180deg, #18181B 0%, #1F1B2E 100%)',
+    hero: 'linear-gradient(135deg, #581C87 0%, #7C3AED 50%, #A855F7 100%)',
+    glow: 'radial-gradient(circle at center, rgba(139, 92, 246, 0.3) 0%, transparent 70%)',
   }
 };
 
@@ -112,4 +143,25 @@ export const typeColors: Record<string, string> = {
   dark: '#705848',
   steel: '#B8B8D0',
   fairy: '#EE99AC',
+};
+
+// Stat colors for charts
+export const statColors = {
+  hp: '#EF4444',
+  attack: '#F97316',
+  defense: '#EAB308',
+  specialAttack: '#3B82F6',
+  specialDefense: '#22C55E',
+  speed: '#EC4899',
+};
+
+// Tier colors for competitive
+export const tierColors = {
+  uber: '#FF0000',
+  ou: '#F59E0B',
+  uu: '#3B82F6',
+  ru: '#22C55E',
+  nu: '#A855F7',
+  pu: '#EC4899',
+  untiered: '#6B7280',
 };

@@ -5,6 +5,7 @@ import Header from './components/Header';
 import Pokedex from './pages/Pokedex';
 import TeamBuilder from './pages/TeamBuilder';
 import BattleGame from './pages/BattleGame';
+import ChampionsTrainer from './pages/ChampionsTrainer';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './styles/global.css';
 
@@ -15,10 +16,16 @@ export default function App() {
   useEffect(() => {
     document.body.style.background = theme.colors.bgPrimary;
     document.body.style.color = theme.colors.textPrimary;
+
+    // Set CSS variables for global use
+    document.documentElement.style.setProperty('--bg-primary', theme.colors.bgPrimary);
+    document.documentElement.style.setProperty('--bg-card', theme.colors.bgCard);
+    document.documentElement.style.setProperty('--text-primary', theme.colors.textPrimary);
+    document.documentElement.style.setProperty('--primary', theme.colors.primary);
   }, [theme]);
 
   return (
-    <Router>
+    <Router basename="/Pokemon-Analyzer">
       <div style={{ minHeight: '100vh', background: theme.colors.bgPrimary }}>
         <Header />
 
@@ -26,6 +33,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/pokedex" replace />} />
           <Route path="/pokedex" element={<Pokedex />} />
           <Route path="/team-builder" element={<TeamBuilder />} />
+          <Route path="/champions" element={<ChampionsTrainer />} />
           <Route path="/battle" element={<BattleGame />} />
         </Routes>
       </div>

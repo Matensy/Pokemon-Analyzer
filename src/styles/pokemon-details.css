@@ -1,0 +1,358 @@
+/* Pokemon Details Modal Styles */
+
+.pokemon-detail-modal .modal-content {
+  border-radius: 20px;
+  border: none;
+  overflow: hidden;
+}
+
+.pokemon-detail-header {
+  position: relative;
+  padding: 2rem;
+  text-align: center;
+}
+
+.pokemon-detail-artwork {
+  width: 200px;
+  height: 200px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.3));
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.pokemon-detail-id {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.pokemon-detail-name {
+  font-size: 2rem;
+  font-weight: 800;
+  text-transform: capitalize;
+  margin: 1rem 0 0.5rem;
+}
+
+/* Type Badges */
+.type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.type-badge-small {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.7rem;
+}
+
+/* Stats Section */
+.stats-section {
+  padding: 1.5rem;
+}
+
+.stat-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.stat-label {
+  width: 100px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.stat-bar-container {
+  flex: 1;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 0 1rem;
+}
+
+.stat-bar {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.5s ease;
+}
+
+.stat-value {
+  width: 40px;
+  text-align: right;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+/* Weakness/Resistance Section */
+.type-effectiveness-section {
+  padding: 1.5rem;
+  border-top: 1px solid;
+}
+
+.effectiveness-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 0.5rem;
+}
+
+.effectiveness-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.effectiveness-title .icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Moves Section */
+.moves-section {
+  padding: 1.5rem;
+  border-top: 1px solid;
+}
+
+.moves-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.move-card {
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  border: 1px solid;
+  transition: all 0.2s ease;
+}
+
+.move-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.move-name {
+  font-weight: 700;
+  text-transform: capitalize;
+  margin-bottom: 0.25rem;
+}
+
+.move-stats {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.move-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Moveset Recommendations */
+.moveset-section {
+  padding: 1.5rem;
+  border-top: 1px solid;
+}
+
+.moveset-card {
+  padding: 1.5rem;
+  border-radius: 16px;
+  border: 1px solid;
+  margin-bottom: 1rem;
+}
+
+.moveset-role {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.moveset-description {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  margin-bottom: 1rem;
+}
+
+.moveset-details {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.moveset-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.moveset-detail-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.moveset-detail-value {
+  font-weight: 600;
+}
+
+.moveset-moves-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.moveset-move-badge {
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+/* EV Spread */
+.ev-spread {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.ev-item {
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Abilities Section */
+.abilities-section {
+  padding: 1.5rem;
+  border-top: 1px solid;
+}
+
+.ability-card {
+  padding: 1rem;
+  border-radius: 12px;
+  margin-bottom: 0.75rem;
+  border: 1px solid;
+}
+
+.ability-name {
+  font-weight: 700;
+  text-transform: capitalize;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ability-hidden-badge {
+  font-size: 0.65rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.ability-description {
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  opacity: 0.8;
+  line-height: 1.5;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .pokemon-detail-artwork {
+    width: 150px;
+    height: 150px;
+  }
+
+  .pokemon-detail-name {
+    font-size: 1.5rem;
+  }
+
+  .moveset-details {
+    grid-template-columns: 1fr;
+  }
+
+  .moves-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Tab Navigation */
+.detail-tabs {
+  display: flex;
+  border-bottom: 2px solid;
+  margin-bottom: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.detail-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.detail-tab {
+  padding: 1rem 1.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  background: none;
+  border: none;
+  border-radius: 0;
+}
+
+.detail-tab:hover {
+  opacity: 0.8;
+}
+
+.detail-tab.active {
+  border-bottom-color: currentColor;
+}
+
+/* Shiny Toggle */
+.shiny-toggle {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 2px solid;
+  transition: all 0.2s ease;
+}
+
+.shiny-toggle:hover {
+  transform: scale(1.05);
+}
+
+.shiny-toggle.active {
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  color: white;
+  border-color: transparent;
+}
