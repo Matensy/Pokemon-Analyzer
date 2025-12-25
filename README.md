@@ -7,18 +7,31 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.2-3178C6?style=for-the-badge&logo=typescript)
 ![Version](https://img.shields.io/badge/Version-3.0-EC4899?style=for-the-badge)
 
-**Plataforma completa de treinamento competitivo para Pokemon Champions**
-*Com IA avançada para análise de times e recomendações estratégicas*
+**🎮 JOGO COMPLETO DE POKÉMON NO BROWSER 🎮**
+*Com animações, IA inteligente, e sistema VGC completo*
 
-[🚀 Demo](#) • [📖 Documentação](#features) • [🎮 Como Usar](#getting-started)
+[🚀 Jogar Agora](#getting-started) • [📖 Features](#features) • [🎮 Como Funciona](#como-usar)
 
 </div>
 
 ---
 
+## 🎮 **JOGO COMPLETO DE POKÉMON!**
+
+Este NÃO é apenas um analisador de times - é um **JOGO COMPLETO** de Pokémon que roda no browser!
+
+### ✨ **Destaques:**
+- 🎬 **20+ Animações** profissionais (sprites, dano, critical hits)
+- 🎯 **Seleção de Movesets** antes da batalha (escolha 4 moves por Pokémon)
+- 📊 **Indicadores Visuais** de type effectiveness em tempo real
+- 🤖 **IA Inteligente** que faz trocas estratégicas e usa counters
+- 💫 **Sprites Animados** com float, shake, e damage effects
+- 🎨 **Interface de Jogo AAA** com design profissional
+- ⚔️ **Modo VGC** oficial (6 Pokémon, escolhe 4)
+
 ## 🌟 Sobre o Projeto
 
-O **Pokemon Champions Trainer** é a plataforma definitiva para treinar composições de time para o novo jogo **Pokemon Champions** (similar ao Pokemon Showdown). Desenvolvida com tecnologias modernas e equipada com **Inteligência Artificial** para análise estratégica, oferece tudo que você precisa para dominar o meta competitivo.
+O **Pokemon Champions Trainer** é um **jogo completo de batalha Pokémon** desenvolvido para treinar para o **Pokemon Champions** (similar ao Showdown). Com tecnologias modernas, IA avançada, e um sistema de batalha completo com animações!
 
 ### 🎯 Diferenciais
 
@@ -110,12 +123,53 @@ Troca instantânea com persistência automática!
 
 ## 🚀 Getting Started
 
-### Pré-requisitos
+### 🎮 **Opção 1: Jogar Online (Deploy)**
 
-- Node.js 18+
-- npm ou yarn
+#### **GitHub Pages:**
+1. Fork este repositório
+2. Vá em **Settings** > **Pages**
+3. Source: **GitHub Actions**
+4. Crie `.github/workflows/deploy.yml`:
+```yaml
+name: Deploy
 
-### Instalação
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - run: npm install
+      - run: npm run build
+      - uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+```
+5. Acesse: `https://seuusuario.github.io/Pokemon-Analyzer`
+
+#### **Vercel (Recomendado - Mais Fácil):**
+1. Vá em [vercel.com](https://vercel.com)
+2. Clique em **Import Project**
+3. Cole o link do seu repositório
+4. Deploy automático! ✨
+
+#### **Netlify:**
+1. Vá em [netlify.com](https://netlify.com)
+2. Drag & drop a pasta `dist` após rodar `npm run build`
+3. Ou conecte com GitHub para deploy automático
+
+---
+
+### 💻 **Opção 2: Rodar Localmente**
+
+#### **Instalação:**
 
 ```bash
 # Clone o repositório
@@ -129,9 +183,9 @@ npm install
 npm run dev
 ```
 
-A aplicação estará disponível em `http://localhost:3000`
+A aplicação estará em: **http://localhost:3000**
 
-### Build para Produção
+#### **Build para Produção:**
 
 ```bash
 # Criar build otimizado
@@ -140,6 +194,8 @@ npm run build
 # Preview do build
 npm run preview
 ```
+
+Build vai para: `dist/`
 
 ---
 
