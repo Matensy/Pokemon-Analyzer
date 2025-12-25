@@ -1,5 +1,5 @@
-import { Container, Row, Col, Card, Button, Badge, Alert } from 'react-bootstrap';
-import { Trash2, Sparkles, Download, Upload } from 'lucide-react';
+import { Container, Row, Col, Button, Badge, Alert } from 'react-bootstrap';
+import { Trash2, Sparkles } from 'lucide-react';
 import { useThemeStore } from '../store/themeStore';
 import { useTeamStore } from '../store/teamStore';
 import { analyzeTeam } from '../services/aiAnalysisService';

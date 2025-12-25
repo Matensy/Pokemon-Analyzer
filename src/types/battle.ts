@@ -1,4 +1,4 @@
-import { Pokemon, Move, PokemonType } from './pokemon';
+import { Pokemon, Move } from './pokemon';
 
 // Battle Types and Interfaces
 

@@ -1,5 +1,5 @@
 import { Card } from 'react-bootstrap';
-import { Pokemon, PokemonType } from '../types/pokemon';
+import { Pokemon } from '../types/pokemon';
 import { useThemeStore } from '../store/themeStore';
 import { typeColors } from '../styles/themes';
 

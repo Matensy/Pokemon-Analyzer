@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Container, Row, Col, Card, Button, Modal, ProgressBar, Badge, Alert } from 'react-bootstrap';
-import { Swords, Shield, Package, ArrowLeftRight, Zap, Heart, Skull } from 'lucide-react';
+import { Swords, Shield, Package, ArrowLeftRight, Zap, Heart } from 'lucide-react';
 import { useThemeStore } from '../store/themeStore';
 import { useTeamStore } from '../store/teamStore';
-import { BattleState, BattlePokemon, BattleTeam, BattleAction } from '../types/battle';
+import { BattleState, BattlePokemon, BattleAction } from '../types/battle';
 import { Pokemon, Move } from '../types/pokemon';
 import { generateAITeam } from '../services/aiTeamGenerator';
 import { getAIAction } from '../services/battleAI';
@@ -26,8 +26,6 @@ export default function BattleGame() {
   const [battleLog, setBattleLog] = useState<string[]>([]);
 
   const [showMoveSelect, setShowMoveSelect] = useState(false);
-  const [showItemSelect, setShowItemSelect] = useState(false);
-  const [showSwitchSelect, setShowSwitchSelect] = useState(false);
   const [showWeaknessPanel, setShowWeaknessPanel] = useState(false);
 
   const [animations, setAnimations] = useState<{
@@ -174,13 +172,6 @@ export default function BattleGame() {
   const handleMoveSelect = (moveIndex: number) => {
     if (!battleState || isProcessing) return;
 
-    const playerActive = battleState.playerTeam.selectedForBattle.find(p => p.isActive)!;
-    const aiActive = battleState.aiTeam.selectedForBattle.find(p => p.isActive)!;
-    const move = playerActive.selectedMoves[moveIndex];
-
-    // Calculate effectiveness for visual feedback
-    const effectiveness = getEffectivenessMultiplier(move.type, aiActive.types);
-
     setShowMoveSelect(false);
     setIsProcessing(true);
 
@@ -202,13 +193,13 @@ export default function BattleGame() {
       const logs: string[] = [];
 
       // Get AI action
-      const aiDecision = getAIAction(newState.aiTeam, newState.playerTeam, newState.currentTurn);
+      const aiDecision = getAIAction(newState.aiTeam, newState.playerTeam);
 
       const playerActive = newState.playerTeam.selectedForBattle.find(p => p.isActive)!;
       const aiActive = newState.aiTeam.selectedForBattle.find(p => p.isActive)!;
 
       // Determine speed order
-      const [first, second] = getSpeedOrder(playerActive, aiActive);
+      const [first] = getSpeedOrder(playerActive, aiActive);
       const firstAction = first === playerActive ? playerAction : aiDecision.action;
       const secondAction = first === playerActive ? aiDecision.action : playerAction;
       const firstIsPlayer = first === playerActive;
@@ -744,8 +735,7 @@ export default function BattleGame() {
                   <Col>
                     <Button
                       size="lg"
-                      disabled={isProcessing}
-                      onClick={() => setShowItemSelect(true)}
+                      disabled
                       variant="success"
                       className="w-100"
                       style={{ padding: '15px', fontSize: '1.1rem', fontWeight: 600 }}
@@ -757,8 +747,7 @@ export default function BattleGame() {
                   <Col>
                     <Button
                       size="lg"
-                      disabled={isProcessing}
-                      onClick={() => setShowSwitchSelect(true)}
+                      disabled
                       variant="info"
                       className="w-100"
                       style={{ padding: '15px', fontSize: '1.1rem', fontWeight: 600 }}

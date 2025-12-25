@@ -89,7 +89,7 @@ function calculateTypeEffectiveness(types: PokemonType[]): TypeEffectiveness {
 export async function fetchPokemon(idOrName: string | number): Promise<Pokemon> {
   try {
     const data = await fetchWithCache<any>(`${API_BASE}/pokemon/${idOrName}`);
-    const speciesData = await fetchWithCache<any>(`${API_BASE}/pokemon-species/${data.id}`);
+    // const speciesData = await fetchWithCache<any>(`${API_BASE}/pokemon-species/${data.id}`);
 
     const types: PokemonType[] = data.types.map((t: any) => t.type.name);
 

@@ -1,13 +1,13 @@
-import { BattlePokemon, BattleAction, AIDecision, BattleTeam, DamageCalculation } from '../types/battle';
+import { AIDecision, BattleTeam } from '../types/battle';
 import { Move, PokemonType } from '../types/pokemon';
 import { calculateDamage } from './battleEngine';
+import type { BattlePokemon } from '../types/battle';
 
 // Advanced Battle AI - Makes intelligent decisions
 
 export function getAIAction(
   aiTeam: BattleTeam,
-  playerTeam: BattleTeam,
-  turnNumber: number
+  playerTeam: BattleTeam
 ): AIDecision {
   const aiActive = aiTeam.selectedForBattle.find(p => p.isActive)!;
   const playerActive = playerTeam.selectedForBattle.find(p => p.isActive)!;
@@ -270,7 +270,7 @@ function calculateEffectiveSpeed(pokemon: BattlePokemon): number {
 }
 
 function getTypeEffectiveness(attackType: PokemonType, defendType: PokemonType): number {
-  const chart: Record<PokemonType, Record<PokemonType, number>> = {
+  const chart: Partial<Record<PokemonType, Partial<Record<PokemonType, number>>>> = {
     normal: { rock: 0.5, ghost: 0, steel: 0.5 },
     fire: { fire: 0.5, water: 0.5, grass: 2, ice: 2, bug: 2, rock: 0.5, dragon: 0.5, steel: 2 },
     water: { fire: 2, water: 0.5, grass: 0.5, ground: 2, rock: 2, dragon: 0.5 },
@@ -291,14 +291,13 @@ function getTypeEffectiveness(attackType: PokemonType, defendType: PokemonType):
     fairy: { fire: 0.5, fighting: 2, poison: 0.5, dragon: 2, dark: 2, steel: 0.5 }
   };
 
-  return chart[attackType]?.[defendType] || 1;
+  return chart[attackType]?.[defendType] ?? 1;
 }
 
 // Predict player's likely action
 export function predictPlayerAction(
   playerTeam: BattleTeam,
-  aiTeam: BattleTeam,
-  turnHistory: string[]
+  aiTeam: BattleTeam
 ): 'attack' | 'switch' | 'item' {
   const playerActive = playerTeam.selectedForBattle.find(p => p.isActive)!;
   const aiActive = aiTeam.selectedForBattle.find(p => p.isActive)!;

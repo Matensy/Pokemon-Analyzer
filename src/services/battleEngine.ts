@@ -1,4 +1,4 @@
-import { BattlePokemon, BattleState, BattleAction, DamageCalculation, StatusCondition } from '../types/battle';
+import { BattlePokemon, BattleState, DamageCalculation, StatusCondition } from '../types/battle';
 import { Move, PokemonType } from '../types/pokemon';
 
 // Battle Engine - Damage calculation and battle logic
@@ -112,7 +112,7 @@ function getTypeEffectiveness(moveType: PokemonType, defenderTypes: PokemonType[
 }
 
 function getTypeDamageMultiplier(attackType: PokemonType, defendType: PokemonType): number {
-  const chart: Record<PokemonType, Record<PokemonType, number>> = {
+  const chart: Partial<Record<PokemonType, Partial<Record<PokemonType, number>>>> = {
     normal: { rock: 0.5, ghost: 0, steel: 0.5 },
     fire: { fire: 0.5, water: 0.5, grass: 2, ice: 2, bug: 2, rock: 0.5, dragon: 0.5, steel: 2 },
     water: { fire: 2, water: 0.5, grass: 0.5, ground: 2, rock: 2, dragon: 0.5 },
@@ -133,7 +133,7 @@ function getTypeDamageMultiplier(attackType: PokemonType, defendType: PokemonTyp
     fairy: { fire: 0.5, fighting: 2, poison: 0.5, dragon: 2, dark: 2, steel: 0.5 }
   };
 
-  return chart[attackType]?.[defendType] || 1;
+  return chart[attackType]?.[defendType] ?? 1;
 }
 
 export function applyDamage(pokemon: BattlePokemon, damage: number): void {

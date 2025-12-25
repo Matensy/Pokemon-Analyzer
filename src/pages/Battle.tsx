@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Container, Row, Col, Card, Button, Modal, ProgressBar, Badge, Alert } from 'react-bootstrap';
-import { Swords, Shield, Zap, Heart, ArrowLeftRight, Package } from 'lucide-react';
+import { Swords, ArrowLeftRight, Package } from 'lucide-react';
 import { useThemeStore } from '../store/themeStore';
 import { useTeamStore } from '../store/teamStore';
-import { BattleState, BattlePokemon, BattleTeam, BattleAction } from '../types/battle';
+import { BattleState, BattlePokemon, BattleAction } from '../types/battle';
 import { generateAITeam } from '../services/aiTeamGenerator';
 import { getAIAction } from '../services/battleAI';
 import { calculateDamage, applyDamage, healPokemon, cureStatus, processEndOfTurn, checkBattleEnd, getSpeedOrder } from '../services/battleEngine';
@@ -173,14 +173,14 @@ export default function Battle() {
       const logs: string[] = [];
 
       // Get AI action
-      const aiDecision = getAIAction(newState.aiTeam, newState.playerTeam, newState.currentTurn);
+      const aiDecision = getAIAction(newState.aiTeam, newState.playerTeam);
       logs.push(`AI: ${aiDecision.reasoning}`);
 
       // Execute actions based on speed
       const playerActive = newState.playerTeam.selectedForBattle.find(p => p.isActive)!;
       const aiActive = newState.aiTeam.selectedForBattle.find(p => p.isActive)!;
 
-      const [first, second] = getSpeedOrder(playerActive, aiActive);
+      const [first] = getSpeedOrder(playerActive, aiActive);
       const firstAction = first === playerActive ? playerAction : aiDecision.action;
       const secondAction = first === playerActive ? aiDecision.action : playerAction;
       const firstIsPlayer = first === playerActive;
