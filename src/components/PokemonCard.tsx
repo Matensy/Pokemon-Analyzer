@@ -1,25 +1,26 @@
-import { Card } from 'react-bootstrap';
+import { Card, Button } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
+import { Eye, Plus } from 'lucide-react';
 import { Pokemon, PokemonType } from '../types/pokemon';
 import { useThemeStore } from '../store/themeStore';
 import { typeColors } from '../styles/themes';
 
 interface PokemonCardProps {
   pokemon: Pokemon;
-  onClick?: () => void;
+  onAdd?: () => void;
 }
 
-export default function PokemonCard({ pokemon, onClick }: PokemonCardProps) {
+export default function PokemonCard({ pokemon, onAdd }: PokemonCardProps) {
   const { theme } = useThemeStore();
+  const navigate = useNavigate();
 
   return (
     <Card
-      onClick={onClick}
       className="h-100 card-hover"
       style={{
         background: theme.colors.bgCard,
         border: `1px solid ${theme.colors.border}`,
         borderRadius: '16px',
-        cursor: onClick ? 'pointer' : 'default',
         transition: 'all 0.3s ease',
         overflow: 'hidden',
       }}
@@ -139,6 +140,41 @@ export default function PokemonCard({ pokemon, onClick }: PokemonCardProps) {
           }}
         >
           Total: {pokemon.stats.total}
+        </div>
+
+        <div className="d-flex gap-2 mt-3">
+          <Button
+            variant="outline"
+            className="flex-fill"
+            onClick={() => navigate(`/pokemon/${pokemon.id}`)}
+            style={{
+              border: `2px solid ${theme.colors.primary}`,
+              color: theme.colors.primary,
+              fontWeight: 600,
+              borderRadius: '10px',
+            }}
+          >
+            <Eye size={16} className="me-1" />
+            Details
+          </Button>
+          {onAdd && (
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                onAdd();
+              }}
+              className="flex-fill"
+              style={{
+                background: theme.gradients.primary,
+                border: 'none',
+                fontWeight: 600,
+                borderRadius: '10px',
+              }}
+            >
+              <Plus size={16} className="me-1" />
+              Add
+            </Button>
+          )}
         </div>
       </Card.Body>
     </Card>

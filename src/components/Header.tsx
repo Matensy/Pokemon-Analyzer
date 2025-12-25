@@ -1,4 +1,5 @@
 import { Navbar, Container, Nav } from 'react-bootstrap';
+import { Link } from 'react-router-dom';
 import { Moon, Sun } from 'lucide-react';
 import { useThemeStore } from '../store/themeStore';
 
@@ -16,7 +17,7 @@ export default function Header() {
       sticky="top"
     >
       <Container fluid>
-        <Navbar.Brand href="/" className="d-flex align-items-center">
+        <Navbar.Brand as={Link} to="/" className="d-flex align-items-center">
           <span
             className="fw-bold fs-3"
             style={{
@@ -33,14 +34,17 @@ export default function Header() {
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
           <Nav className="ms-auto align-items-center gap-3">
-            <Nav.Link href="#pokedex" style={{ color: '#FFFFFF', fontWeight: 500 }}>
+            <Nav.Link as={Link} to="/" style={{ color: '#FFFFFF', fontWeight: 500 }}>
+              Home
+            </Nav.Link>
+            <Nav.Link as={Link} to="/pokedex" style={{ color: '#FFFFFF', fontWeight: 500 }}>
               Pokédex
             </Nav.Link>
-            <Nav.Link href="#team-builder" style={{ color: '#FFFFFF', fontWeight: 500 }}>
+            <Nav.Link as={Link} to="/team-builder" style={{ color: '#FFFFFF', fontWeight: 500 }}>
               Team Builder
             </Nav.Link>
-            <Nav.Link href="#battle-sim" style={{ color: '#FFFFFF', fontWeight: 500 }}>
-              Battle Sim
+            <Nav.Link as={Link} to="/battle" style={{ color: '#FFFFFF', fontWeight: 500 }}>
+              Battle
             </Nav.Link>
 
             <button

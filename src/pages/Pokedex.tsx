@@ -38,16 +38,16 @@ export default function Pokedex() {
   async function loadPokemon() {
     setLoading(true);
     try {
-      // Load first 151 Pokemon initially for performance
-      const promises = Array.from({ length: 151 }, (_, i) =>
+      // Load first 300 Pokemon initially for better coverage
+      const promises = Array.from({ length: 300 }, (_, i) =>
         fetchPokemon(i + 1).then((p) => {
           p.recommendedMovesets = generateMovesets(p);
           return p;
-        })
+        }).catch(() => null) // Handle missing Pokemon
       );
 
       const results = await Promise.all(promises);
-      setPokemon(results);
+      setPokemon(results.filter(p => p !== null) as Pokemon[]);
     } catch (error) {
       console.error('Error loading Pokemon:', error);
     } finally {
@@ -63,18 +63,40 @@ export default function Pokedex() {
         fetchPokemon(id).then((p) => {
           p.recommendedMovesets = generateMovesets(p);
           return p;
-        })
+        }).catch(() => null)
       );
 
       const results = await Promise.all(promises);
+      const validResults = results.filter(p => p !== null) as Pokemon[];
       setPokemon((prev) => {
-        const newPokemon = results.filter(
+        const newPokemon = validResults.filter(
           (r) => !prev.some((p) => p.id === r.id)
         );
         return [...prev, ...newPokemon].sort((a, b) => a.id - b.id);
       });
     } catch (error) {
       console.error('Error loading more Pokemon:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadAllPokemon() {
+    setLoading(true);
+    try {
+      // Load all 1025 Pokemon
+      const promises = Array.from({ length: 1025 }, (_, i) =>
+        fetchPokemon(i + 1).then((p) => {
+          p.recommendedMovesets = generateMovesets(p);
+          return p;
+        }).catch(() => null)
+      );
+
+      const results = await Promise.all(promises);
+      const validResults = results.filter(p => p !== null) as Pokemon[];
+      setPokemon(validResults.sort((a, b) => a.id - b.id));
+    } catch (error) {
+      console.error('Error loading all Pokemon:', error);
     } finally {
       setLoading(false);
     }
@@ -129,8 +151,22 @@ export default function Pokedex() {
             National Pokédex
           </h1>
           <p style={{ color: theme.colors.textSecondary }}>
-            Complete database of all {pokemon.length} Pokemon (Gen 1-9)
+            {pokemon.length} Pokemon loaded • Complete database of 1,025 Pokemon (Gen 1-9)
           </p>
+          {pokemon.length < 1000 && (
+            <Button
+              onClick={loadAllPokemon}
+              disabled={loading}
+              style={{
+                background: theme.gradients.primary,
+                border: 'none',
+                fontWeight: 600,
+                marginTop: '10px',
+              }}
+            >
+              {loading ? 'Loading...' : 'Load All 1,025 Pokemon'}
+            </Button>
+          )}
         </div>
 
         {/* Filters */}
@@ -230,7 +266,7 @@ export default function Pokedex() {
                 <Col key={p.id}>
                   <PokemonCard
                     pokemon={p}
-                    onClick={() => addPokemon(p)}
+                    onAdd={() => addPokemon(p)}
                   />
                 </Col>
               ))}

@@ -5,7 +5,7 @@
 ![Pokemon Champions](https://img.shields.io/badge/Pokemon-Champions-8B5CF6?style=for-the-badge)
 ![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.2-3178C6?style=for-the-badge&logo=typescript)
-![Version](https://img.shields.io/badge/Version-3.0-EC4899?style=for-the-badge)
+![Version](https://img.shields.io/badge/Version-4.0-EC4899?style=for-the-badge)
 
 **Plataforma completa de treinamento competitivo para Pokemon Champions**
 *Com IA avançada para análise de times e recomendações estratégicas*
@@ -73,20 +73,68 @@ Nossa IA analisa seu time e fornece:
   - Sinergias entre pares
   - Ameaças do meta
 
-### 📊 Dados Completos de Pokémon
+### 📊 Página de Detalhes de Pokémon
 
-Para cada Pokémon você tem acesso a:
+Cada Pokémon possui uma página dedicada com **informações completas**:
 
-- **Stats Base Completos**: HP, Atk, Def, SpA, SpD, Speed
-- **Tipos e Efetividades**: Fraquezas (2x, 4x), Resistências, Imunidades
-- **Abilities**: Todas as habilidades com descrições
-- **Movesets Recomendados**:
-  - Roles (Sweeper, Wall, Tank, Support, Setup)
-  - Movimentos por role
-  - EVs otimizados
-  - Nature ideal
-  - Item recomendado
-- **Movepool Completo**: Todos os movimentos aprendidos
+#### 📈 Stats & Abilities
+- **Stats Base Completos** com barras de progresso visuais
+- **HP, Attack, Defense, Sp. Attack, Sp. Defense, Speed**
+- **Total Base Stats** destacado
+- **Todas as Abilities** (normal + hidden) com descrições
+
+#### ⚔️ Type Effectiveness
+- **Weaknesses** (2x e 4x)
+- **Resistances** (0.5x)
+- **Immunities** (0x)
+- **Badges coloridos** por tipo
+
+#### 🎯 Recommended Movesets
+- **Roles automáticos** (Sweeper, Wall, Tank, Support, Setup)
+- **4 movimentos otimizados** por role
+- **Ability recomendada**
+- **Item ideal** (Life Orb, Leftovers, etc.)
+- **Nature** (Adamant, Timid, Jolly, etc.)
+- **EV Spread competitivo** (252/252/4 format)
+- **Múltiplos sets** para diferentes estratégias
+
+#### 📚 Movepool Completo
+- **Todos os movimentos** aprendidos pelo Pokémon
+- **Organizado por tipo**
+- **Interface clean e moderna**
+
+### ⚔️ Battle Simulator (NOVO!)
+
+**Sistema de batalha completo integrado ao site:**
+
+#### 🎮 Features de Batalha
+- **Battle Engine profissional** com cálculo de dano preciso
+- **AI Opponent** inteligente que escolhe os melhores moves
+- **Turn-based combat** como nos jogos oficiais
+- **Damage Calculator** com fórmula Gen 8+
+- **Type effectiveness** em tempo real
+- **Critical hits** e **STAB** (Same Type Attack Bonus)
+- **Accuracy rolls** realistas
+
+#### 🤖 AI Battle System
+- **AI seleciona o melhor move** baseado em damage output
+- **Strategic switching** quando Pokémon faint
+- **Meta team generation** com Pokémon competitivos
+- **Battle log** completo com histórico de ações
+
+#### 🎨 Interface Moderna
+- **Animações fluidas** durante batalha
+- **HP bars** dinâmicas com cores (verde/amarelo/vermelho)
+- **Move selection** com tipos e power
+- **Team overview** com status de cada Pokémon
+- **Real-time battle log** com eventos
+
+#### 📊 Damage Calculation
+- **Fórmula oficial** Gen 8+ implementada
+- **Modifiers**: STAB (1.5x), Type Effectiveness (0-4x), Critical (1.5x)
+- **Random factor** (0.85-1.0)
+- **Physical vs Special** calculation
+- **Min/Max damage range**
 
 ### 🎨 Sistema de Temas
 
@@ -177,26 +225,31 @@ npm run preview
 Pokemon-Analyzer/
 ├── src/
 │   ├── components/          # Componentes reutilizáveis
-│   │   ├── Header.tsx
-│   │   ├── PokemonCard.tsx
+│   │   ├── Header.tsx       # Navegação e tema
+│   │   ├── PokemonCard.tsx  # Card de Pokémon
 │   │   └── LoadingSpinner.tsx
-│   ├── pages/               # Páginas
-│   │   ├── Pokedex.tsx
-│   │   └── TeamBuilder.tsx
+│   ├── pages/               # Páginas da aplicação
+│   │   ├── Home.tsx         # Landing page
+│   │   ├── Pokedex.tsx      # Pokédex completa
+│   │   ├── PokemonDetails.tsx # Detalhes do Pokémon
+│   │   ├── TeamBuilder.tsx  # Construtor de times
+│   │   └── Battle.tsx       # Simulador de batalha
 │   ├── services/            # Lógica de negócio
 │   │   ├── pokeapi.ts       # Client da PokeAPI
 │   │   ├── movesetService.ts # Geração de movesets
-│   │   └── aiAnalysisService.ts # IA de análise
-│   ├── store/               # State Management
-│   │   ├── themeStore.ts
-│   │   └── teamStore.ts
+│   │   ├── aiAnalysisService.ts # IA de análise de times
+│   │   ├── damageCalculator.ts # Cálculo de dano (Gen 8+)
+│   │   └── battleEngine.ts  # Engine de batalha
+│   ├── store/               # State Management (Zustand)
+│   │   ├── themeStore.ts    # Tema light/dark
+│   │   └── teamStore.ts     # Persistência de times
 │   ├── types/               # TypeScript Types
-│   │   └── pokemon.ts
+│   │   └── pokemon.ts       # Tipos do domínio
 │   ├── styles/              # Estilos e Temas
-│   │   ├── themes.ts
+│   │   ├── themes.ts        # Roxo/Branco & Roxo/Preto
 │   │   └── global.css
-│   ├── App.tsx             # App principal
-│   └── main.tsx            # Entry point
+│   ├── App.tsx              # App principal + Router
+│   └── main.tsx             # Entry point
 ├── public/
 ├── index.html
 ├── package.json
@@ -209,32 +262,70 @@ Pokemon-Analyzer/
 
 ## 🎮 Como Usar
 
+### 🏠 Home - Visão Geral
+
+1. Acesse a **Home** para ver todas as features
+2. **4 cards principais**:
+   - Complete Pokédex (1,025 Pokémon)
+   - Team Builder (AI-powered)
+   - Battle Simulator (vs AI)
+   - Pokemon Champions Training
+3. **Stats banner** mostra o escopo do projeto
+4. Links diretos para cada seção
+
 ### 1️⃣ Explore a Pokédex
 
 1. Acesse a aba **Pokédex**
-2. Use filtros para encontrar Pokémon:
-   - Busque por nome ou ID
-   - Filtre por tipo ou geração
-3. Clique em um Pokémon para ver detalhes completos
-4. Adicione ao seu time com um clique
+2. **Carregamento inteligente**:
+   - Inicia com 300 Pokémon
+   - Clique em "Load All 1,025 Pokemon" para carregar todos
+3. **Use filtros** para encontrar Pokémon:
+   - 🔍 Busque por nome ou ID
+   - 🏷️ Filtre por tipo (18 tipos)
+   - 🎮 Filtre por geração (1-9)
+4. **Dois botões por card**:
+   - 👁️ **Details**: Ver página completa
+   - ➕ **Add**: Adicionar ao time
 
-### 2️⃣ Monte seu Time
+### 2️⃣ Veja Detalhes Completos
+
+1. Clique em **Details** em qualquer Pokémon
+2. **4 tabs de informação**:
+   - **Stats & Abilities**: Stats base + habilidades
+   - **Type Effectiveness**: Fraquezas e resistências
+   - **Recommended Movesets**: Sets competitivos
+   - **All Moves**: Movepool completo
+3. Botão **Add to Team** para adicionar diretamente
+
+### 3️⃣ Monte seu Time
 
 1. Vá para **Team Builder**
-2. Adicione até 6 Pokémon
-3. A IA analisa automaticamente
-4. Veja:
-   - Score geral do time
+2. Adicione até **6 Pokémon**
+3. **IA analisa automaticamente**:
+   - Score geral do time (0-100)
    - Fraquezas compartilhadas
-   - Sinergias detectadas
-   - Recomendações da IA
+   - Sinergias entre Pokémon
+   - Threats do meta
+   - Recomendações inteligentes
+4. **Ajuste** baseado nas sugestões
 
-### 3️⃣ Otimize com IA
+### 4️⃣ Battle Simulator (NOVO!)
 
-1. Leia as recomendações da IA
-2. Identifique threats do meta
-3. Ajuste seu time baseado nas sugestões
-4. Melhore seu score gradualmente
+1. Construa um time no **Team Builder**
+2. Vá para **Battle**
+3. **Sistema de batalha**:
+   - AI gera um time competitivo
+   - Turn-based combat
+   - Escolha seus moves
+   - AI responde estrategicamente
+4. **Features durante batalha**:
+   - HP bars dinâmicas
+   - Damage calculation em tempo real
+   - Type effectiveness
+   - Critical hits e STAB
+   - Battle log completo
+5. **Switch Pokémon** quando necessário
+6. Vença todas as batalhas!
 
 ---
 
@@ -285,33 +376,41 @@ Score Base: 100 pontos
 
 ## 🎯 Roadmap
 
-### ✅ Concluído (v3.0)
+### ✅ Concluído (v4.0)
 
-- [x] Base de dados completa (Gen 1-9)
-- [x] Sistema de IA para análise
-- [x] Interface moderna (React + Bootstrap 5)
-- [x] Temas customizados (Light/Dark)
-- [x] Movesets recomendados
+- [x] Base de dados completa (1,025 Pokémon Gen 1-9)
+- [x] Sistema de IA para análise avançada
+- [x] Interface moderna (React + Bootstrap 5 + TypeScript)
+- [x] Temas customizados (Roxo/Branco & Roxo/Preto)
+- [x] Movesets recomendados por role
 - [x] Type effectiveness completo
 - [x] Team Builder com análise real-time
+- [x] **Landing Page (Home)** moderna
+- [x] **Página de Detalhes** completa por Pokémon
+- [x] **Battle Simulator** profissional com AI
+- [x] **Damage Calculator** Gen 8+ preciso
+- [x] **AI Opponent** estratégico
+- [x] Load all 1,025 Pokémon on demand
 
-### 🔜 Próximas Features (v3.1)
+### 🔜 Próximas Features (v4.1)
 
 - [ ] Import/Export formato Showdown
-- [ ] Simulador de batalha básico
-- [ ] Damage calculator
-- [ ] Comparador de Pokémon
-- [ ] Histórico de times salvos
-- [ ] Tier lists oficiais (OU, UU, RU, etc.)
+- [ ] Comparador de Pokémon (side-by-side)
+- [ ] Histórico de batalhas
+- [ ] Tier lists oficiais (OU, UU, RU, Uber, etc.)
+- [ ] Saved teams manager
+- [ ] Speed calculator (speed tiers)
 
-### 🚀 Futuro (v4.0)
+### 🚀 Futuro (v5.0)
 
-- [ ] Multiplayer (compartilhar times)
+- [ ] Multiplayer battles (real-time)
+- [ ] Online team sharing
 - [ ] Breeding calculator
-- [ ] EV training simulator
+- [ ] IV/EV training simulator
 - [ ] PWA (Progressive Web App)
-- [ ] Modo offline
+- [ ] Modo offline completo
 - [ ] Integração com Showdown API
+- [ ] Tournament bracket generator
 
 ---
 
