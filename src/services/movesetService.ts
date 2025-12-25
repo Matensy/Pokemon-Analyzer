@@ -1,4 +1,4 @@
-import { Pokemon, Moveset, PokemonType } from '../types/pokemon';
+import { Pokemon, Moveset } from '../types/pokemon';
 
 // Recommended items by role
 const items = {
@@ -33,7 +33,6 @@ function determineRole(pokemon: Pokemon): string {
   const { stats } = pokemon;
   const { attack, defense, specialAttack, specialDefense, speed, hp } = stats;
 
-  const isPhysical = attack > specialAttack;
   const isFast = speed >= 100;
   const isBulky = (defense + specialDefense) >= 180;
   const hasGoodHP = hp >= 90;
@@ -249,7 +248,7 @@ export function generateMovesets(pokemon: Pokemon): Moveset[] {
   return movesets;
 }
 
-export function getRecommendedAbility(pokemon: Pokemon): PokemonAbility {
+export function getRecommendedAbility(pokemon: Pokemon): { name: string; isHidden: boolean } {
   // Prefer non-hidden abilities for competitive play
   const regular = pokemon.abilities.filter(a => !a.isHidden);
   if (regular.length > 0) {

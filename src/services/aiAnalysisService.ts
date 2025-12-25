@@ -241,9 +241,10 @@ function identifyThreats(team: Pokemon[]) {
 
     team.forEach(pokemon => {
       // Check if this Pokemon is weak to the threat
-      data.types.forEach(type => {
-        const moveTypes = offensiveChart[type];
-        moveTypes.forEach(effectiveType => {
+      data.types.forEach(typeStr => {
+        const type = typeStr as PokemonType;
+        const moveTypes = offensiveChart[type] || [];
+        moveTypes.forEach((effectiveType: PokemonType) => {
           if (pokemon.types.includes(effectiveType)) {
             threatLevel++;
             if (!vulnerablePokemon.includes(pokemon.name)) {

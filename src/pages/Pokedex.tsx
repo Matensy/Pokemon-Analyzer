@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Container, Row, Col, Form, Button, Pagination } from 'react-bootstrap';
+import { Container, Row, Col, Form, Pagination } from 'react-bootstrap';
 import { Search, Filter } from 'lucide-react';
 import { useThemeStore } from '../store/themeStore';
 import { useTeamStore } from '../store/teamStore';
-import { fetchPokemon, fetchPokemonByGeneration, fetchPokemonByType } from '../services/pokeapi';
+import { fetchPokemon, fetchPokemonByGeneration } from '../services/pokeapi';
 import { generateMovesets } from '../services/movesetService';
 import { Pokemon, PokemonType, Generation } from '../types/pokemon';
 import PokemonCard from '../components/PokemonCard';
