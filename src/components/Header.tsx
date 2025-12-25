@@ -1,4 +1,5 @@
 import { Navbar, Container, Nav } from 'react-bootstrap';
+import { Link } from 'react-router-dom';
 import { Moon, Sun } from 'lucide-react';
 import { useThemeStore } from '../store/themeStore';
 
@@ -33,15 +34,15 @@ export default function Header() {
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
           <Nav className="ms-auto align-items-center gap-3">
-            <Nav.Link href="#pokedex" style={{ color: '#FFFFFF', fontWeight: 500 }}>
-              Pokédex
-            </Nav.Link>
-            <Nav.Link href="#team-builder" style={{ color: '#FFFFFF', fontWeight: 500 }}>
-              Team Builder
-            </Nav.Link>
-            <Nav.Link href="#battle-sim" style={{ color: '#FFFFFF', fontWeight: 500 }}>
-              Battle Sim
-            </Nav.Link>
+            <Link to="/pokedex" style={{ color: '#FFFFFF', fontWeight: 500, textDecoration: 'none' }}>
+              📚 Pokédex
+            </Link>
+            <Link to="/team-builder" style={{ color: '#FFFFFF', fontWeight: 500, textDecoration: 'none' }}>
+              👥 Team Builder
+            </Link>
+            <Link to="/battle" style={{ color: '#FFFFFF', fontWeight: 500, textDecoration: 'none' }}>
+              ⚔️ VGC Battle
+            </Link>
 
             <button
               onClick={toggleTheme}
