@@ -1,199 +1,358 @@
-# 🎮 Pokémon Database & Team Analyzer
+# ⚔️ Pokemon Champions Trainer
 
-Um banco de dados completo e analisador de times Pokémon competitivos, inspirado nos melhores sites como PokemonDB e PokemonGoHub, com suporte para formatos 1v1 e 2v2 (Doubles).
+<div align="center">
 
-![Pokémon Analyzer](https://img.shields.io/badge/Pokemon-Database-blue?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
-![Version](https://img.shields.io/badge/Version-2.0-orange?style=for-the-badge)
+![Pokemon Champions](https://img.shields.io/badge/Pokemon-Champions-8B5CF6?style=for-the-badge)
+![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.2-3178C6?style=for-the-badge&logo=typescript)
+![Version](https://img.shields.io/badge/Version-3.0-EC4899?style=for-the-badge)
 
-## ✨ Funcionalidades Principais
+**Plataforma completa de treinamento competitivo para Pokemon Champions**
+*Com IA avançada para análise de times e recomendações estratégicas*
 
-### 🗂️ Pokedex Nacional Completa
-- **151 Pokémon da Geração 1** carregados dinamicamente
-- **Paginação inteligente** (24 Pokémon por página)
+[🚀 Demo](#) • [📖 Documentação](#features) • [🎮 Como Usar](#getting-started)
+
+</div>
+
+---
+
+## 🌟 Sobre o Projeto
+
+O **Pokemon Champions Trainer** é a plataforma definitiva para treinar composições de time para o novo jogo **Pokemon Champions** (similar ao Pokemon Showdown). Desenvolvida com tecnologias modernas e equipada com **Inteligência Artificial** para análise estratégica, oferece tudo que você precisa para dominar o meta competitivo.
+
+### 🎯 Diferenciais
+
+- ✅ **Base de Dados Completa**: Todos os 1025 Pokémon (Gerações 1-9)
+- 🤖 **IA Avançada**: Análise inteligente de times com recomendações estratégicas
+- 🎨 **Interface Moderna**: React + Bootstrap 5 + TypeScript
+- 🌓 **Temas Customizados**:
+  - 🌞 **Light Mode**: Branco + Roxo vibrante
+  - 🌙 **Dark Mode**: Roxo + Preto premium
+- 📊 **Análise Profunda**: Movesets, fraquezas, sinergias, counters e mais
+- ⚡ **Performance Otimizada**: Cache inteligente e carregamento rápido
+
+---
+
+## ✨ Features
+
+### 📚 Pokédex Nacional Completa
+
+- **1025 Pokémon** de todas as gerações (1-9)
 - **Filtros avançados**:
-  - Busca por nome ou número
-  - Filtro por tipo (18 tipos disponíveis)
-  - Filtro por geração (Gen 1-8)
-  - Ordenação por: ID, Nome, HP, Ataque, Defesa, Speed
-- **Sistema de Favoritos** com persistência local
-- **Grid responsivo** com cards interativos
-- Visualização rápida de sprites e tipos
+  - 🔍 Busca por nome ou ID
+  - 🏷️ Filtro por tipo (18 tipos)
+  - 🎮 Filtro por geração
+  - 📊 Ordenação por stats
+- **Paginação inteligente** (24 por página)
+- **Cards interativos** com informações detalhadas
+- **Artwork oficial** em alta qualidade
 
-### 🧮 Calculadora de Dano
-- Calcule dano entre dois Pokémon
-- Considere level, stats base e efetividade de tipos
-- Fórmula de dano simplificada baseada nos jogos
-- Interface intuitiva com resultados visuais
-- Indicadores de super efetivo/resistência
+### 🤖 Sistema de IA
 
-### ⚖️ Comparador de Pokémon
-- Compare dois Pokémon lado a lado
-- **Gráficos de barras interativos** para cada estatística
-- Comparação visual de stats:
-  - HP, Ataque, Defesa
-  - Ataque Especial, Defesa Especial
-  - Speed
-- **Total Base Stats** destacado
-- Identificação visual de quem tem vantagem em cada stat
+Nossa IA analisa seu time e fornece:
 
-### 📦 Import/Export de Times (Formato Showdown)
-- **Exporte seu time** no formato Pokémon Showdown
-- **Importe times** colando texto do Showdown
-- Formato compatível com a comunidade competitiva
-- Geração automática de movesets baseados em roles
-- Inclui EVs, Nature e movimentos sugeridos
+- **📈 Score Geral** (0-100) baseado em múltiplos fatores
+- **⚠️ Identificação de Fraquezas** compartilhadas
+- **✅ Análise de Pontos Fortes** do time
+- **🔗 Detecção de Sinergias** entre Pokémon
+- **🎯 Threats do Meta** (Landorus, Dragapult, etc.)
+- **💡 Recomendações Inteligentes**:
+  - Sugestões de swap de Pokémon
+  - Melhorias em movesets
+  - Cobertura ofensiva/defensiva
+  - Balanceamento de roles
 
-### 🎨 Tema Claro/Escuro
-- **Toggle de tema** com um clique
-- **Persistência automática** da preferência
-- Design adaptado para ambos os modos
-- Transições suaves entre temas
+### ⚔️ Team Builder Avançado
 
-### 🔍 Sistema de Busca Avançado
-- Busca rápida por nome ou número
-- Exibe sprite oficial em alta qualidade
-- Mostra estatísticas base com barras visuais coloridas
-- Lista completa de fraquezas (2x e 4x), resistências e imunidades
-- Integração com a Pokedex
+- **Montagem de time** (até 6 Pokémon)
+- **Persistência local** (salva automaticamente)
+- **Análise em tempo real** com IA
+- **Visualização de:**
+  - Cobertura de tipos (ofensiva/defensiva)
+  - Fraquezas compartilhadas
+  - Sinergias entre pares
+  - Ameaças do meta
 
-### 👥 Montagem e Análise de Time
-- Suporte para 6 Pokémon
-- Salva automaticamente no navegador
-- Interface drag-and-drop intuitiva
+### 📊 Dados Completos de Pokémon
 
-### 📊 Análise Completa do Time
-- **Sinergias**: Cobertura de tipos, sinergia defensiva, tiers de speed
-- **Cobertura Defensiva**: Visualização de quais tipos seu time resiste ou é fraco
-- **Cobertura Ofensiva**: Quais tipos seu time consegue acertar com super efetivo
-- **Roles do Time**: Identifica se você tem Sweepers, Tanks, Walls, Supports, etc.
-- **Fraquezas Compartilhadas**: Alerta sobre tipos perigosos para seu time
-- **Counters**: Sugere Pokémon que podem countar seu time
+Para cada Pokémon você tem acesso a:
 
-### 🎯 Movesets Recomendados
-- Movimentos sugeridos por role
-- Itens recomendados
-- Natures ideais
-- Distribuição de EVs
+- **Stats Base Completos**: HP, Atk, Def, SpA, SpD, Speed
+- **Tipos e Efetividades**: Fraquezas (2x, 4x), Resistências, Imunidades
+- **Abilities**: Todas as habilidades com descrições
+- **Movesets Recomendados**:
+  - Roles (Sweeper, Wall, Tank, Support, Setup)
+  - Movimentos por role
+  - EVs otimizados
+  - Nature ideal
+  - Item recomendado
+- **Movepool Completo**: Todos os movimentos aprendidos
 
-### ⚔️ Análise 1v1
-- Score de viabilidade para cada Pokémon
-- Dicas específicas para formato singles
+### 🎨 Sistema de Temas
 
-### 👥 Análise 2v2 (Doubles)
-- Sinergias entre pares de Pokémon
-- Dicas para formato doubles
-- Combos sugeridos
+#### 🌞 Light Mode - Branco & Roxo
+```css
+Background: Branco (#FFFFFF)
+Primary: Roxo Vibrante (#8B5CF6)
+Accent: Rosa (#EC4899)
+```
 
-### 📋 Tabela de Tipos
-- Tabela completa de efetividades
-- Todos os 18 tipos
-- Visual código de cores
+#### 🌙 Dark Mode - Roxo & Preto
+```css
+Background: Preto (#0F0F0F)
+Primary: Roxo Claro (#A78BFA)
+Accent: Rosa (#F472B6)
+```
 
-## 🚀 Como Usar
+Troca instantânea com persistência automática!
 
-### Opção 1: GitHub Pages (Recomendado)
+---
 
-1. Faça um Fork deste repositório
-2. Vá em **Settings** > **Pages**
-3. Em "Source", selecione **Deploy from a branch**
-4. Selecione a branch `main` e pasta `/ (root)`
-5. Clique em **Save**
-6. Aguarde alguns minutos e acesse: `https://seuusuario.github.io/pokemon-team-analyzer`
+## 🚀 Getting Started
 
-### Opção 2: Local
+### Pré-requisitos
 
-1. Clone o repositório:
+- Node.js 18+
+- npm ou yarn
+
+### Instalação
+
 ```bash
-git clone https://github.com/seuusuario/pokemon-team-analyzer.git
+# Clone o repositório
+git clone https://github.com/Matensy/Pokemon-Analyzer.git
+cd Pokemon-Analyzer
+
+# Instale as dependências
+npm install
+
+# Inicie o servidor de desenvolvimento
+npm run dev
 ```
 
-2. Abra o arquivo `index.html` no navegador
+A aplicação estará disponível em `http://localhost:3000`
 
-## 🛠️ Tecnologias
+### Build para Produção
 
-- **HTML5** - Estrutura
-- **CSS3** - Estilização (sem frameworks)
-- **JavaScript** - Lógica e interatividade
-- **PokéAPI** - Dados dos Pokémon
-- **LocalStorage** - Persistência do time
+```bash
+# Criar build otimizado
+npm run build
 
-## 📱 Responsivo
-
-O site é totalmente responsivo e funciona em:
-- 💻 Desktop
-- 📱 Mobile
-- 📟 Tablet
-
-## 🎨 Design
-
-- Tema escuro para conforto visual
-- Cores inspiradas em games competitivos
-- Animações suaves
-- Feedback visual claro
-
-## 📝 Estrutura do Projeto
-
-```
-pokemon-team-analyzer/
-├── index.html          # Arquivo principal (tudo em um)
-├── README.md           # Documentação
-└── LICENSE             # Licença MIT
+# Preview do build
+npm run preview
 ```
 
-## 🆕 Novidades da Versão 2.0
+---
 
-Esta versão foi completamente reformulada com base nos melhores bancos de dados de Pokémon:
+## 🛠️ Stack Tecnológica
 
-### Inspirações
-- **PokemonDB.net**: Sistema de filtros, comparador, pokedex completa
-- **PokemonGoHub**: Interface limpa, organização de dados
-- **Pokemon Showdown**: Formato de import/export de times
+### Frontend
+- **React 18.2** - UI Library
+- **TypeScript 5.2** - Type Safety
+- **Vite** - Build Tool & Dev Server
+- **Bootstrap 5.3** - UI Framework
+- **React Bootstrap 2.9** - React Components
 
-### O Que Foi Adicionado
-- ✅ Pokedex completa com 151 Pokémon (Gen 1)
-- ✅ Sistema de filtros avançados (tipo, geração, stats)
-- ✅ Paginação profissional
-- ✅ Calculadora de dano funcional
-- ✅ Comparador de Pokémon com gráficos
-- ✅ Import/Export formato Showdown
-- ✅ Tema claro/escuro
-- ✅ Sistema de favoritos
-- ✅ UI/UX completamente redesenhada
-- ✅ Design responsivo aprimorado
+### State Management
+- **Zustand 4.4** - Global State (leve e performático)
+- **Persist Middleware** - LocalStorage sync
 
-## 🔜 Próximas Melhorias
+### Data Fetching
+- **Axios 1.6** - HTTP Client
+- **TanStack React Query 5** - Server State & Cache
+- **PokeAPI** - Pokemon Data Source
 
-- [ ] Expandir Pokedex para todas as gerações (898+ Pokémon)
-- [ ] Adicionar movepool completo de cada Pokémon
-- [ ] Integrar abilities (habilidades) com descrições
+### UI/UX
+- **Framer Motion 10** - Animations
+- **Lucide React** - Icons
+- **Recharts 2** - Charts & Graphs
+
+### Utilities
+- **React Router 6** - Navigation
+
+---
+
+## 📁 Estrutura do Projeto
+
+```
+Pokemon-Analyzer/
+├── src/
+│   ├── components/          # Componentes reutilizáveis
+│   │   ├── Header.tsx
+│   │   ├── PokemonCard.tsx
+│   │   └── LoadingSpinner.tsx
+│   ├── pages/               # Páginas
+│   │   ├── Pokedex.tsx
+│   │   └── TeamBuilder.tsx
+│   ├── services/            # Lógica de negócio
+│   │   ├── pokeapi.ts       # Client da PokeAPI
+│   │   ├── movesetService.ts # Geração de movesets
+│   │   └── aiAnalysisService.ts # IA de análise
+│   ├── store/               # State Management
+│   │   ├── themeStore.ts
+│   │   └── teamStore.ts
+│   ├── types/               # TypeScript Types
+│   │   └── pokemon.ts
+│   ├── styles/              # Estilos e Temas
+│   │   ├── themes.ts
+│   │   └── global.css
+│   ├── App.tsx             # App principal
+│   └── main.tsx            # Entry point
+├── public/
+├── index.html
+├── package.json
+├── tsconfig.json
+├── vite.config.ts
+└── README.md
+```
+
+---
+
+## 🎮 Como Usar
+
+### 1️⃣ Explore a Pokédex
+
+1. Acesse a aba **Pokédex**
+2. Use filtros para encontrar Pokémon:
+   - Busque por nome ou ID
+   - Filtre por tipo ou geração
+3. Clique em um Pokémon para ver detalhes completos
+4. Adicione ao seu time com um clique
+
+### 2️⃣ Monte seu Time
+
+1. Vá para **Team Builder**
+2. Adicione até 6 Pokémon
+3. A IA analisa automaticamente
+4. Veja:
+   - Score geral do time
+   - Fraquezas compartilhadas
+   - Sinergias detectadas
+   - Recomendações da IA
+
+### 3️⃣ Otimize com IA
+
+1. Leia as recomendações da IA
+2. Identifique threats do meta
+3. Ajuste seu time baseado nas sugestões
+4. Melhore seu score gradualmente
+
+---
+
+## 🤖 Como Funciona a IA
+
+### Análise Multifatorial
+
+A IA analisa seu time considerando:
+
+1. **Cobertura de Tipos**
+   - Ofensiva: Quantos tipos você cobre com super efetivo
+   - Defensiva: Quais tipos você resiste bem
+
+2. **Fraquezas Compartilhadas**
+   - Identifica tipos perigosos (3+ Pokémon fracos)
+   - Prioriza fraquezas críticas (4x damage)
+
+3. **Sinergias**
+   - Cobertura defensiva complementar
+   - Distribuição de speed tiers
+   - Balanceamento físico/especial
+
+4. **Meta Threats**
+   - Compara com Pokémon populares (Landorus, Dragapult, etc.)
+   - Avalia vulnerabilidade do seu time
+
+5. **Role Balance**
+   - Verifica presença de Sweepers, Walls, Supports
+   - Sugere balanceamento ideal
+
+### Score Calculation
+
+```typescript
+Score Base: 100 pontos
+- Fraquezas compartilhadas: -10 a -20
++ Cobertura ofensiva: +0 a +20
++ Sinergias: +0 a +15
+- Time incompleto: -5 por slot vazio
+```
+
+**Classificação:**
+- 80-100: 🟢 Excelente
+- 60-79: 🔵 Bom
+- 40-59: 🟡 Regular
+- 0-39: 🔴 Precisa melhorias
+
+---
+
+## 🎯 Roadmap
+
+### ✅ Concluído (v3.0)
+
+- [x] Base de dados completa (Gen 1-9)
+- [x] Sistema de IA para análise
+- [x] Interface moderna (React + Bootstrap 5)
+- [x] Temas customizados (Light/Dark)
+- [x] Movesets recomendados
+- [x] Type effectiveness completo
+- [x] Team Builder com análise real-time
+
+### 🔜 Próximas Features (v3.1)
+
+- [ ] Import/Export formato Showdown
+- [ ] Simulador de batalha básico
+- [ ] Damage calculator
+- [ ] Comparador de Pokémon
+- [ ] Histórico de times salvos
 - [ ] Tier lists oficiais (OU, UU, RU, etc.)
-- [ ] Breeding calculator (cadeias de breeding)
-- [ ] Análise de ameaças específicas
+
+### 🚀 Futuro (v4.0)
+
+- [ ] Multiplayer (compartilhar times)
+- [ ] Breeding calculator
+- [ ] EV training simulator
 - [ ] PWA (Progressive Web App)
 - [ ] Modo offline
-- [ ] Gráficos de meta competitivo
-- [ ] Integration com Pokémon Showdown API
+- [ ] Integração com Showdown API
+
+---
 
 ## 🤝 Contribuindo
 
-Contribuições são bem-vindas! Sinta-se à vontade para:
+Contribuições são bem-vindas! Para contribuir:
 
-1. Fazer um Fork
-2. Criar uma branch (`git checkout -b feature/nova-feature`)
-3. Commit suas mudanças (`git commit -m 'Adiciona nova feature'`)
-4. Push para a branch (`git push origin feature/nova-feature`)
-5. Abrir um Pull Request
+1. Fork o projeto
+2. Crie uma branch (`git checkout -b feature/NovaFeature`)
+3. Commit suas mudanças (`git commit -m 'Adiciona NovaFeature'`)
+4. Push para a branch (`git push origin feature/NovaFeature`)
+5. Abra um Pull Request
+
+---
 
 ## 📄 Licença
 
 Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
 
+---
+
 ## 🙏 Créditos
 
-- [PokéAPI](https://pokeapi.co/) - API gratuita de dados Pokémon
-- Pokémon é uma marca registrada da Nintendo/Game Freak
+- **PokeAPI** - API gratuita de dados Pokémon
+- **Pokemon Company** - Pokémon é marca registrada da Nintendo/Game Freak
+- **Comunidade Competitiva** - Inspiração e dados de meta
 
 ---
 
-Feito com ❤️ para a comunidade Pokémon competitiva
+## 📧 Contato
+
+**Matensy** - [@Matensy](https://github.com/Matensy)
+
+Project Link: [https://github.com/Matensy/Pokemon-Analyzer](https://github.com/Matensy/Pokemon-Analyzer)
+
+---
+
+<div align="center">
+
+**Feito com ❤️ para a comunidade Pokemon Champions**
+
+⚔️ Bons treinos e boa sorte nas batalhas! ⚔️
+
+</div>
