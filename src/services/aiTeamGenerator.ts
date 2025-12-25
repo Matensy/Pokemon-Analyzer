@@ -1,5 +1,5 @@
 import { Pokemon, PokemonType } from '../types/pokemon';
-import { BattlePokemon, TeamSynergyScore } from '../types/battle';
+import { BattlePokemon, TeamSynergyScore, MEGA_POKEMON } from '../types/battle';
 import { getRandomBerry, getRandomHeldItem } from '../data/items';
 import { fetchPokemon, fetchPokemonByGeneration } from './pokeapi';
 import { generateMovesets } from './movesetService';
@@ -252,6 +252,9 @@ function createBattlePokemon(pokemon: Pokemon): BattlePokemon {
   // Assign random held item
   const heldItem = Math.random() > 0.3 ? getRandomHeldItem() : getRandomBerry();
 
+  // Check if can Mega Evolve
+  const canMegaEvolve = MEGA_POKEMON[pokemon.name.toLowerCase()] !== undefined;
+
   // Select 4 random moves from movepool
   const availableMoves = pokemon.moves.filter(m => m.power && m.power > 0);
   const selectedMoves = [];
@@ -299,7 +302,12 @@ function createBattlePokemon(pokemon: Pokemon): BattlePokemon {
     heldItem,
     selectedMoves,
     isActive: false,
-    isFainted: false
+    isFainted: false,
+    // New mechanics
+    canMegaEvolve,
+    megaState: { isMega: false },
+    dynamaxState: { isDynamaxed: false, turnsRemaining: 0 },
+    teraState: { isTerastallized: false, teraType: null }
   };
 }
 

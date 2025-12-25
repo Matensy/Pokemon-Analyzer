@@ -3,7 +3,7 @@ import { Container, Row, Col, Card, Button, Modal, ProgressBar, Badge, Alert } f
 import { Swords, ArrowLeftRight, Package } from 'lucide-react';
 import { useThemeStore } from '../store/themeStore';
 import { useTeamStore } from '../store/teamStore';
-import { BattleState, BattlePokemon, BattleAction } from '../types/battle';
+import { BattleState, BattlePokemon, BattleAction, MEGA_POKEMON } from '../types/battle';
 import { generateAITeam } from '../services/aiTeamGenerator';
 import { getAIAction } from '../services/battleAI';
 import { calculateDamage, applyDamage, healPokemon, cureStatus, processEndOfTurn, checkBattleEnd, getSpeedOrder } from '../services/battleEngine';
@@ -60,13 +60,19 @@ export default function Battle() {
         pokemon: playerBattlePokemon,
         selectedForBattle: playerBattlePokemon,
         items: [...STARTER_ITEMS],
-        remainingPokemon: 4
+        remainingPokemon: 4,
+        hasMegaEvolved: false,
+        hasDynamaxed: false,
+        hasTerastallized: false
       },
       aiTeam: {
         pokemon: aiPokemon,
         selectedForBattle: aiSelected,
         items: [],
-        remainingPokemon: 4
+        remainingPokemon: 4,
+        hasMegaEvolved: false,
+        hasDynamaxed: false,
+        hasTerastallized: false
       },
       currentTurn: 1,
       battleLog: ['Battle started!', `Go! ${playerBattlePokemon[0].name}!`, `Opponent sent out ${aiSelected[0].name}!`],
@@ -94,6 +100,7 @@ export default function Battle() {
   const convertToBattlePokemon = (pokemon: Pokemon): BattlePokemon => {
     const level = 50;
     const maxHp = Math.floor(((2 * pokemon.stats.hp + 31 + 63) * level) / 100) + level + 10;
+    const canMega = MEGA_POKEMON[pokemon.name.toLowerCase()] !== undefined;
 
     const selectedMoves = pokemon.moves.filter(m => m.power).slice(0, 4);
 
@@ -114,7 +121,11 @@ export default function Battle() {
       },
       selectedMoves,
       isActive: false,
-      isFainted: false
+      isFainted: false,
+      canMegaEvolve: canMega,
+      megaState: { isMega: false },
+      dynamaxState: { isDynamaxed: false, turnsRemaining: 0 },
+      teraState: { isTerastallized: false, teraType: null }
     };
   };
 

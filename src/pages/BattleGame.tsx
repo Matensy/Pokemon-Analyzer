@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Container, Row, Col, Card, Button, Modal, Badge } from 'react-bootstrap';
-import { Swords, Shield, RefreshCw, Zap, Check, X } from 'lucide-react';
+import { Swords, Shield, RefreshCw, Zap, Check, X, Sparkles, Flame, Diamond } from 'lucide-react';
 import { useThemeStore } from '../store/themeStore';
 import { useTeamStore } from '../store/teamStore';
-import { BattleState, BattlePokemon, BattleAction } from '../types/battle';
-import { Pokemon, Move } from '../types/pokemon';
+import { BattleState, BattlePokemon, BattleAction, MEGA_POKEMON, getDynamaxMove } from '../types/battle';
+import { Pokemon, Move, PokemonType } from '../types/pokemon';
 import { generateAITeam } from '../services/aiTeamGenerator';
 import { getAIAction } from '../services/battleAI';
 import { calculateDamage, applyDamage, processEndOfTurn, checkBattleEnd, getSpeedOrder } from '../services/battleEngine';
@@ -26,6 +26,13 @@ export default function BattleGame() {
   const [battleLog, setBattleLog] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSwitchModal, setShowSwitchModal] = useState(false);
+  const [showTeraModal, setShowTeraModal] = useState(false);
+
+  // Mechanic toggles for next attack
+  const [useMegaNext, setUseMegaNext] = useState(false);
+  const [useDynamaxNext, setUseDynamaxNext] = useState(false);
+  const [useTeraNext, setUseTeraNext] = useState(false);
+  const [selectedTeraType, setSelectedTeraType] = useState<PokemonType | null>(null);
 
   const [animations, setAnimations] = useState({
     playerAttack: false,
@@ -34,6 +41,12 @@ export default function BattleGame() {
     aiDamage: false,
     effectText: ''
   });
+
+  const allTypes: PokemonType[] = [
+    'normal', 'fire', 'water', 'electric', 'grass', 'ice',
+    'fighting', 'poison', 'ground', 'flying', 'psychic',
+    'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy'
+  ];
 
   const startGame = () => {
     if (team.length < 4) {
@@ -107,13 +120,19 @@ export default function BattleGame() {
         pokemon: playerTeamBattle,
         selectedForBattle: playerTeamBattle,
         items: [...STARTER_ITEMS],
-        remainingPokemon: 4
+        remainingPokemon: 4,
+        hasMegaEvolved: false,
+        hasDynamaxed: false,
+        hasTerastallized: false
       },
       aiTeam: {
         pokemon: aiPokemon,
         selectedForBattle: aiSelected,
         items: [],
-        remainingPokemon: 4
+        remainingPokemon: 4,
+        hasMegaEvolved: false,
+        hasDynamaxed: false,
+        hasTerastallized: false
       },
       currentTurn: 1,
       battleLog: ['Battle Start!', `Go ${playerTeamBattle[0].name}!`, `Opponent sent ${aiSelected[0].name}!`],
@@ -125,11 +144,18 @@ export default function BattleGame() {
     setBattleState(initialState);
     setBattleLog(initialState.battleLog);
     setGameState('battle');
+    // Reset mechanic toggles
+    setUseMegaNext(false);
+    setUseDynamaxNext(false);
+    setUseTeraNext(false);
+    setSelectedTeraType(null);
   };
 
   const convertToBattlePokemon = (pokemon: Pokemon): BattlePokemon => {
     const level = 50;
     const maxHp = Math.floor(((2 * pokemon.stats.hp + 31 + 63) * level) / 100) + level + 10;
+    const canMega = MEGA_POKEMON[pokemon.name.toLowerCase()] !== undefined;
+
     return {
       ...pokemon,
       currentHp: maxHp,
@@ -139,7 +165,11 @@ export default function BattleGame() {
       statStages: { attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0, accuracy: 0, evasion: 0 },
       selectedMoves: pokemon.moves.slice(0, 4),
       isActive: false,
-      isFainted: false
+      isFainted: false,
+      canMegaEvolve: canMega,
+      megaState: { isMega: false },
+      dynamaxState: { isDynamaxed: false, turnsRemaining: 0 },
+      teraState: { isTerastallized: false, teraType: null }
     };
   };
 
@@ -147,7 +177,23 @@ export default function BattleGame() {
     if (!battleState || isProcessing) return;
     setIsProcessing(true);
 
-    const playerAction: BattleAction = { type: 'move', pokemonIndex: 0, moveIndex, targetIndex: 0 };
+    const playerAction: BattleAction = {
+      type: 'move',
+      pokemonIndex: 0,
+      moveIndex,
+      targetIndex: 0,
+      useMega: useMegaNext,
+      useDynamax: useDynamaxNext,
+      useTera: useTeraNext,
+      teraType: selectedTeraType || undefined
+    };
+
+    // Reset mechanic toggles
+    setUseMegaNext(false);
+    setUseDynamaxNext(false);
+    setUseTeraNext(false);
+    setSelectedTeraType(null);
+
     await processTurn(playerAction);
   };
 
@@ -166,6 +212,17 @@ export default function BattleGame() {
     const newState = { ...battleState };
     const logs: string[] = [];
 
+    // Apply player mechanics before turn
+    if (playerAction.useMega) {
+      applyMegaEvolution(newState.playerTeam, logs);
+    }
+    if (playerAction.useDynamax) {
+      applyDynamax(newState.playerTeam, logs);
+    }
+    if (playerAction.useTera && playerAction.teraType) {
+      applyTerastallization(newState.playerTeam, playerAction.teraType, logs);
+    }
+
     const aiDecision = getAIAction(newState.aiTeam, newState.playerTeam);
     const playerActive = newState.playerTeam.selectedForBattle.find(p => p.isActive)!;
     const aiActive = newState.aiTeam.selectedForBattle.find(p => p.isActive)!;
@@ -182,6 +239,10 @@ export default function BattleGame() {
       await executeAction(secondAction, !firstIsPlayer, newState, logs);
     }
 
+    // Process Dynamax turn countdown
+    processDynamaxTurns(newState.playerTeam, logs);
+    processDynamaxTurns(newState.aiTeam, logs);
+
     const endTurnLogs = processEndOfTurn(newState);
     logs.push(...endTurnLogs);
     checkBattleEnd(newState);
@@ -193,6 +254,99 @@ export default function BattleGame() {
     setBattleState(newState);
     setBattleLog([...newState.battleLog]);
     setIsProcessing(false);
+  };
+
+  const applyMegaEvolution = (team: BattleState['playerTeam'], logs: string[]) => {
+    if (team.hasMegaEvolved) return;
+
+    const active = team.selectedForBattle.find(p => p.isActive);
+    if (!active || !active.canMegaEvolve) return;
+
+    const megaData = MEGA_POKEMON[active.name.toLowerCase()];
+    if (!megaData) return;
+
+    active.megaState = {
+      isMega: true,
+      originalStats: { ...active.stats }
+    };
+
+    // Apply stat boosts
+    Object.entries(megaData.statBoost).forEach(([stat, boost]) => {
+      if (stat in active.stats) {
+        (active.stats as any)[stat] += boost;
+      }
+    });
+
+    team.hasMegaEvolved = true;
+    logs.push(`${active.name} Mega Evolved!`);
+  };
+
+  const applyDynamax = (team: BattleState['playerTeam'], logs: string[]) => {
+    if (team.hasDynamaxed) return;
+
+    const active = team.selectedForBattle.find(p => p.isActive);
+    if (!active) return;
+
+    active.dynamaxState = {
+      isDynamaxed: true,
+      turnsRemaining: 3,
+      originalMoves: [...active.selectedMoves],
+      originalHp: active.maxHp
+    };
+
+    // Double HP
+    const hpRatio = active.currentHp / active.maxHp;
+    active.maxHp *= 2;
+    active.currentHp = Math.floor(active.maxHp * hpRatio);
+
+    // Convert moves to Max Moves
+    active.selectedMoves = active.selectedMoves.map(move =>
+      getDynamaxMove(move, active.types)
+    );
+
+    team.hasDynamaxed = true;
+    logs.push(`${active.name} Dynamaxed!`);
+  };
+
+  const applyTerastallization = (team: BattleState['playerTeam'], teraType: PokemonType, logs: string[]) => {
+    if (team.hasTerastallized) return;
+
+    const active = team.selectedForBattle.find(p => p.isActive);
+    if (!active) return;
+
+    active.teraState = {
+      isTerastallized: true,
+      teraType: teraType,
+      originalTypes: [...active.types]
+    };
+
+    // Change type to Tera type
+    active.types = [teraType];
+
+    team.hasTerastallized = true;
+    logs.push(`${active.name} Terastallized into ${teraType.toUpperCase()} type!`);
+  };
+
+  const processDynamaxTurns = (team: BattleState['playerTeam'], logs: string[]) => {
+    const active = team.selectedForBattle.find(p => p.isActive);
+    if (!active || !active.dynamaxState.isDynamaxed) return;
+
+    active.dynamaxState.turnsRemaining--;
+
+    if (active.dynamaxState.turnsRemaining <= 0) {
+      // Revert Dynamax
+      const originalHp = active.dynamaxState.originalHp || active.maxHp / 2;
+      const hpRatio = active.currentHp / active.maxHp;
+      active.maxHp = originalHp;
+      active.currentHp = Math.max(1, Math.floor(active.maxHp * hpRatio));
+
+      if (active.dynamaxState.originalMoves) {
+        active.selectedMoves = active.dynamaxState.originalMoves;
+      }
+
+      active.dynamaxState = { isDynamaxed: false, turnsRemaining: 0 };
+      logs.push(`${active.name}'s Dynamax ended!`);
+    }
   };
 
   const executeAction = async (action: BattleAction, isPlayer: boolean, state: BattleState, logs: string[]) => {
@@ -251,7 +405,8 @@ export default function BattleGame() {
 
           <div style={{ color: theme.colors.textSecondary, marginBottom: '24px' }}>
             <div className="d-flex align-items-center justify-content-center gap-2 mb-2"><Swords size={18} /> Real damage calculation</div>
-            <div className="d-flex align-items-center justify-content-center gap-2 mb-2"><Shield size={18} /> Type effectiveness</div>
+            <div className="d-flex align-items-center justify-content-center gap-2 mb-2"><Sparkles size={18} /> Mega Evolution & Dynamax</div>
+            <div className="d-flex align-items-center justify-content-center gap-2 mb-2"><Diamond size={18} /> Terastallization</div>
             <div className="d-flex align-items-center justify-content-center gap-2"><Zap size={18} /> AI opponent</div>
           </div>
 
@@ -275,10 +430,12 @@ export default function BattleGame() {
             {team.map((pokemon, index) => {
               const isSelected = selectedForBattle.includes(index);
               const order = selectedForBattle.indexOf(index) + 1;
+              const canMega = MEGA_POKEMON[pokemon.name.toLowerCase()] !== undefined;
               return (
                 <Col key={pokemon.id}>
                   <Card onClick={() => { if (isSelected) setSelectedForBattle(selectedForBattle.filter(i => i !== index)); else if (selectedForBattle.length < 4) setSelectedForBattle([...selectedForBattle, index]); }} style={{ background: isSelected ? theme.colors.primary : theme.colors.bgCard, border: `3px solid ${isSelected ? theme.colors.primary : theme.colors.border}`, cursor: 'pointer', transition: 'all 0.2s', position: 'relative' }} className="text-center p-3">
                     {isSelected && <div style={{ position: 'absolute', top: 8, right: 8, background: '#22C55E', color: 'white', width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>{order}</div>}
+                    {canMega && <div style={{ position: 'absolute', top: 8, left: 8, background: '#EC4899', color: 'white', padding: '2px 6px', borderRadius: '6px', fontSize: '0.65rem', fontWeight: 700 }}>MEGA</div>}
                     <img src={pokemon.artwork || pokemon.sprite} alt={pokemon.name} style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
                     <div style={{ color: isSelected ? 'white' : theme.colors.textPrimary, fontWeight: 600, textTransform: 'capitalize', marginTop: '8px' }}>{pokemon.name}</div>
                     <div className="d-flex gap-1 justify-content-center mt-1">{pokemon.types.map(type => <span key={type} style={{ background: typeColors[type], color: 'white', padding: '2px 8px', borderRadius: '8px', fontSize: '0.65rem', fontWeight: 600 }}>{type}</span>)}</div>
@@ -296,7 +453,7 @@ export default function BattleGame() {
     );
   }
 
-  // MOVESET SELECT SCREEN - REDESIGNED
+  // MOVESET SELECT SCREEN
   if (gameState === 'moveset-select') {
     const currentPokemon = teamWithMovesets[currentMovesetIndex];
     const attackingMoves = currentPokemon.moves.filter(m => m.power && m.power > 0);
@@ -421,10 +578,14 @@ export default function BattleGame() {
     );
   }
 
-  // BATTLE SCREEN - COMPLETELY REDESIGNED
+  // BATTLE SCREEN WITH MECHANICS
   if (gameState === 'battle' && battleState) {
     const playerActive = battleState.playerTeam.selectedForBattle.find(p => p.isActive);
     const aiActive = battleState.aiTeam.selectedForBattle.find(p => p.isActive);
+
+    const canMega = playerActive?.canMegaEvolve && !battleState.playerTeam.hasMegaEvolved && !playerActive.megaState.isMega;
+    const canDynamax = !battleState.playerTeam.hasDynamaxed && !playerActive?.dynamaxState.isDynamaxed;
+    const canTera = !battleState.playerTeam.hasTerastallized && !playerActive?.teraState.isTerastallized;
 
     const getHpColor = (current: number, max: number) => {
       const pct = current / max;
@@ -432,6 +593,9 @@ export default function BattleGame() {
       if (pct > 0.2) return '#F59E0B';
       return '#EF4444';
     };
+
+    // Get display moves (show Max moves if dynamaxed)
+    const displayMoves = playerActive?.selectedMoves || [];
 
     return (
       <div style={{ background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #334155 100%)', minHeight: '100vh', padding: '16px' }}>
@@ -447,7 +611,12 @@ export default function BattleGame() {
             {/* Opponent Pokemon */}
             <div style={{ position: 'absolute', top: '20px', right: '20px', display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ color: 'white', fontWeight: 700, fontSize: '1.1rem', textTransform: 'capitalize' }}>{aiActive?.name}</div>
+                <div className="d-flex align-items-center gap-2 justify-content-end">
+                  <div style={{ color: 'white', fontWeight: 700, fontSize: '1.1rem', textTransform: 'capitalize' }}>{aiActive?.name}</div>
+                  {aiActive?.megaState.isMega && <Badge bg="danger">MEGA</Badge>}
+                  {aiActive?.dynamaxState.isDynamaxed && <Badge style={{ background: '#EC4899' }}>DMAX</Badge>}
+                  {aiActive?.teraState.isTerastallized && <Badge style={{ background: typeColors[aiActive.teraState.teraType!] }}>TERA</Badge>}
+                </div>
                 <div className="d-flex gap-1 justify-content-end mb-2">
                   {aiActive?.types.map(type => <span key={type} style={{ background: typeColors[type], color: 'white', padding: '2px 10px', borderRadius: '10px', fontSize: '0.65rem', fontWeight: 600 }}>{type}</span>)}
                 </div>
@@ -459,7 +628,7 @@ export default function BattleGame() {
                 </div>
               </div>
               <div className={animations.aiDamage ? 'animate-shake' : ''}>
-                <img src={aiActive?.artwork || aiActive?.sprite} alt={aiActive?.name} style={{ width: '140px', height: '140px', objectFit: 'contain', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))' }} />
+                <img src={aiActive?.artwork || aiActive?.sprite} alt={aiActive?.name} style={{ width: aiActive?.dynamaxState.isDynamaxed ? '180px' : '140px', height: aiActive?.dynamaxState.isDynamaxed ? '180px' : '140px', objectFit: 'contain', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))', transition: 'all 0.3s ease' }} />
               </div>
             </div>
 
@@ -473,10 +642,15 @@ export default function BattleGame() {
             {/* Player Pokemon */}
             <div style={{ position: 'absolute', bottom: '20px', left: '20px', display: 'flex', alignItems: 'flex-end', gap: '16px' }}>
               <div className={animations.playerDamage ? 'animate-shake' : ''}>
-                <img src={playerActive?.artwork || playerActive?.sprite} alt={playerActive?.name} style={{ width: '160px', height: '160px', objectFit: 'contain', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))' }} />
+                <img src={playerActive?.artwork || playerActive?.sprite} alt={playerActive?.name} style={{ width: playerActive?.dynamaxState.isDynamaxed ? '200px' : '160px', height: playerActive?.dynamaxState.isDynamaxed ? '200px' : '160px', objectFit: 'contain', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))', transition: 'all 0.3s ease' }} />
               </div>
               <div>
-                <div style={{ color: 'white', fontWeight: 700, fontSize: '1.25rem', textTransform: 'capitalize' }}>{playerActive?.name}</div>
+                <div className="d-flex align-items-center gap-2">
+                  <div style={{ color: 'white', fontWeight: 700, fontSize: '1.25rem', textTransform: 'capitalize' }}>{playerActive?.name}</div>
+                  {playerActive?.megaState.isMega && <Badge bg="danger">MEGA</Badge>}
+                  {playerActive?.dynamaxState.isDynamaxed && <Badge style={{ background: '#EC4899' }}>DMAX {playerActive.dynamaxState.turnsRemaining}T</Badge>}
+                  {playerActive?.teraState.isTerastallized && <Badge style={{ background: typeColors[playerActive.teraState.teraType!] }}>TERA</Badge>}
+                </div>
                 <div className="d-flex gap-1 mb-2">
                   {playerActive?.types.map(type => <span key={type} style={{ background: typeColors[type], color: 'white', padding: '3px 12px', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 600 }}>{type}</span>)}
                 </div>
@@ -506,6 +680,25 @@ export default function BattleGame() {
             </div>
           </div>
 
+          {/* Mechanics Buttons */}
+          <div className="d-flex gap-2 justify-content-center mb-3">
+            {canMega && (
+              <Button variant={useMegaNext ? 'danger' : 'outline-danger'} onClick={() => { setUseMegaNext(!useMegaNext); setUseDynamaxNext(false); }} disabled={isProcessing}>
+                <Flame size={16} className="me-1" />Mega {useMegaNext && '✓'}
+              </Button>
+            )}
+            {canDynamax && (
+              <Button variant={useDynamaxNext ? 'info' : 'outline-info'} onClick={() => { setUseDynamaxNext(!useDynamaxNext); setUseMegaNext(false); }} disabled={isProcessing} style={{ background: useDynamaxNext ? '#EC4899' : 'transparent', borderColor: '#EC4899' }}>
+                <Sparkles size={16} className="me-1" />Dynamax {useDynamaxNext && '✓'}
+              </Button>
+            )}
+            {canTera && (
+              <Button variant={useTeraNext ? 'warning' : 'outline-warning'} onClick={() => setShowTeraModal(true)} disabled={isProcessing}>
+                <Diamond size={16} className="me-1" />Tera {useTeraNext && selectedTeraType && `(${selectedTeraType})`}
+              </Button>
+            )}
+          </div>
+
           {/* Controls */}
           <Row className="g-3">
             {/* Move Buttons */}
@@ -513,14 +706,14 @@ export default function BattleGame() {
               <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '16px', padding: '16px' }}>
                 <div style={{ color: '#94A3B8', fontSize: '0.85rem', marginBottom: '12px' }}>What will {playerActive?.name} do?</div>
                 <Row xs={2} className="g-2">
-                  {playerActive?.selectedMoves.map((move, index) => {
-                    const hasSTAB = playerActive.types.includes(move.type);
+                  {displayMoves.map((move, index) => {
+                    const hasSTAB = playerActive?.types.includes(move.type);
                     return (
                       <Col key={index}>
                         <Button onClick={() => handleMoveSelect(index)} disabled={isProcessing} style={{ background: typeColors[move.type], border: 'none', width: '100%', padding: '14px 12px', textAlign: 'left', opacity: isProcessing ? 0.6 : 1 }} className="h-100">
                           <div style={{ fontWeight: 700, marginBottom: '2px' }}>{move.name}</div>
                           <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>
-                            {move.category === 'physical' ? '⚔️' : '✨'} {move.power || '-'} PWR | {move.accuracy}% ACC{hasSTAB && ' | STAB'}
+                            {move.category === 'physical' ? '⚔️' : '✨'} {move.power || '-'} PWR | {move.accuracy || '∞'}% ACC{hasSTAB && ' | STAB'}
                           </div>
                         </Button>
                       </Col>
@@ -562,6 +755,41 @@ export default function BattleGame() {
                     {p.isActive && <Badge bg="primary" className="mt-1">Active</Badge>}
                     {p.isFainted && <Badge bg="danger" className="mt-1">Fainted</Badge>}
                   </Card>
+                </Col>
+              ))}
+            </Row>
+          </Modal.Body>
+        </Modal>
+
+        {/* Tera Type Selection Modal */}
+        <Modal show={showTeraModal} onHide={() => setShowTeraModal(false)} centered size="lg">
+          <Modal.Header closeButton style={{ background: theme.colors.bgCard, borderBottom: `1px solid ${theme.colors.border}` }}>
+            <Modal.Title style={{ color: theme.colors.textPrimary }}>
+              <Diamond size={20} className="me-2" />
+              Select Tera Type
+            </Modal.Title>
+          </Modal.Header>
+          <Modal.Body style={{ background: theme.colors.bgPrimary }}>
+            <Row xs={3} md={6} className="g-2">
+              {allTypes.map((type) => (
+                <Col key={type}>
+                  <Button
+                    onClick={() => {
+                      setSelectedTeraType(type);
+                      setUseTeraNext(true);
+                      setShowTeraModal(false);
+                    }}
+                    style={{
+                      background: typeColors[type],
+                      border: 'none',
+                      width: '100%',
+                      padding: '12px',
+                      fontWeight: 600,
+                      textTransform: 'capitalize'
+                    }}
+                  >
+                    {type}
+                  </Button>
                 </Col>
               ))}
             </Row>
