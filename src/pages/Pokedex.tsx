@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Container, Row, Col, Form, Pagination, Spinner } from 'react-bootstrap';
-import { Search, Filter } from 'lucide-react';
+import { Container, Row, Col, Form, Pagination, Spinner, ListGroup } from 'react-bootstrap';
+import { Search, Filter, Globe, X } from 'lucide-react';
 import { useThemeStore } from '../store/themeStore';
 import { useTeamStore } from '../store/teamStore';
 import { fetchPokemonBatch, fetchPokemon } from '../services/pokeapi';
+import { loadPokemonIndex, searchPokemonGlobal, PokemonEntry } from '../services/pokemonIndex';
 import { generateMovesets } from '../services/movesetService';
 import { Pokemon, PokemonType, Generation } from '../types/pokemon';
 import PokemonCard from '../components/PokemonCard';
@@ -38,10 +39,22 @@ export default function Pokedex() {
   const [selectedType, setSelectedType] = useState<PokemonType | 'all'>('all');
   const [selectedGen, setSelectedGen] = useState<Generation>(1);
 
+  // Global search
+  const [searchResults, setSearchResults] = useState<PokemonEntry[]>([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [isGlobalSearch, setIsGlobalSearch] = useState(false);
+  const [globalSearchPokemon, setGlobalSearchPokemon] = useState<Pokemon[]>([]);
+  const [loadingSearch, setLoadingSearch] = useState(false);
+
   // Modal
   const [selectedPokemon, setSelectedPokemon] = useState<Pokemon | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(false);
+
+  // Pre-load Pokemon index on mount
+  useEffect(() => {
+    loadPokemonIndex();
+  }, []);
 
   // Load Pokemon for current page
   const loadPage = useCallback(async (gen: Generation, page: number) => {
@@ -75,14 +88,80 @@ export default function Pokedex() {
     loadPage(1, 1);
   }, [loadPage]);
 
-  // Filter by type and search (client-side)
-  const filteredPokemon = pokemon.filter(p => {
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      if (!p.name.includes(query) && !p.id.toString().includes(query)) {
-        return false;
+  // Handle search input change
+  const handleSearchChange = async (value: string) => {
+    setSearchQuery(value);
+
+    if (value.length >= 2) {
+      const results = await searchPokemonGlobal(value);
+      setSearchResults(results.slice(0, 10)); // Show top 10 results
+      setShowSearchResults(true);
+    } else {
+      setSearchResults([]);
+      setShowSearchResults(false);
+
+      // If search is cleared and was in global search mode, go back to normal
+      if (value.length === 0 && isGlobalSearch) {
+        setIsGlobalSearch(false);
+        setGlobalSearchPokemon([]);
       }
     }
+  };
+
+  // Handle selecting a search result
+  const handleSelectSearchResult = async (entry: PokemonEntry) => {
+    setShowSearchResults(false);
+    setLoadingSearch(true);
+    setIsGlobalSearch(true);
+    setSearchQuery(entry.name);
+
+    try {
+      const fullPokemon = await fetchPokemon(entry.id);
+      fullPokemon.recommendedMovesets = generateMovesets(fullPokemon);
+      setGlobalSearchPokemon([fullPokemon]);
+    } catch (error) {
+      console.error('Error loading Pokemon:', error);
+    } finally {
+      setLoadingSearch(false);
+    }
+  };
+
+  // Handle global search (Enter key or search button)
+  const handleGlobalSearch = async () => {
+    if (searchQuery.length < 2) return;
+
+    setShowSearchResults(false);
+    setLoadingSearch(true);
+    setIsGlobalSearch(true);
+
+    try {
+      const results = await searchPokemonGlobal(searchQuery);
+      if (results.length > 0) {
+        // Load first 24 results
+        const idsToLoad = results.slice(0, 24).map(r => r.id);
+        const pokemonResults = await fetchPokemonBatch(idsToLoad, 8);
+        setGlobalSearchPokemon(pokemonResults);
+      } else {
+        setGlobalSearchPokemon([]);
+      }
+    } catch (error) {
+      console.error('Error in global search:', error);
+    } finally {
+      setLoadingSearch(false);
+    }
+  };
+
+  // Clear global search
+  const clearGlobalSearch = () => {
+    setSearchQuery('');
+    setIsGlobalSearch(false);
+    setGlobalSearchPokemon([]);
+    setSearchResults([]);
+    setShowSearchResults(false);
+  };
+
+  // Filter by type (client-side for current page)
+  const filteredPokemon = (isGlobalSearch ? globalSearchPokemon : pokemon).filter(p => {
     if (selectedType !== 'all' && !p.types.includes(selectedType)) {
       return false;
     }
@@ -93,7 +172,7 @@ export default function Pokedex() {
   const handleGenChange = (gen: Generation) => {
     setSelectedGen(gen);
     setCurrentPage(1);
-    setSearchQuery('');
+    clearGlobalSearch();
     setSelectedType('all');
     loadPage(gen, 1);
   };
@@ -150,47 +229,150 @@ export default function Pokedex() {
           </p>
         </div>
 
-        {/* Generation Selector */}
-        <div className="d-flex flex-wrap gap-2 justify-content-center mb-4">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((gen) => (
+        {/* Generation Selector - only show when not in global search */}
+        {!isGlobalSearch && (
+          <div className="d-flex flex-wrap gap-2 justify-content-center mb-4">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((gen) => (
+              <button
+                key={gen}
+                onClick={() => handleGenChange(gen as Generation)}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  background: selectedGen === gen ? theme.gradients.primary : theme.colors.bgCard,
+                  color: selectedGen === gen ? 'white' : theme.colors.textPrimary,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: selectedGen === gen ? '0 4px 12px rgba(124, 58, 237, 0.3)' : 'none'
+                }}
+              >
+                Gen {gen}
+                <span style={{ display: 'block', fontSize: '0.7rem', opacity: 0.8 }}>
+                  {generationNames[gen]}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Global Search Banner when active */}
+        {isGlobalSearch && (
+          <div
+            className="mb-4 p-3 d-flex align-items-center justify-content-between"
+            style={{
+              background: theme.gradients.primary,
+              borderRadius: '12px',
+              color: 'white'
+            }}
+          >
+            <div className="d-flex align-items-center gap-2">
+              <Globe size={20} />
+              <span>Global Search Results for: <strong>"{searchQuery}"</strong></span>
+              <span className="ms-2">({globalSearchPokemon.length} found)</span>
+            </div>
             <button
-              key={gen}
-              onClick={() => handleGenChange(gen as Generation)}
+              onClick={clearGlobalSearch}
               style={{
-                padding: '10px 20px',
-                borderRadius: '12px',
+                background: 'rgba(255,255,255,0.2)',
                 border: 'none',
-                background: selectedGen === gen ? theme.gradients.primary : theme.colors.bgCard,
-                color: selectedGen === gen ? 'white' : theme.colors.textPrimary,
-                fontWeight: 600,
+                borderRadius: '8px',
+                padding: '8px 16px',
+                color: 'white',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: selectedGen === gen ? '0 4px 12px rgba(124, 58, 237, 0.3)' : 'none'
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
               }}
             >
-              Gen {gen}
-              <span style={{ display: 'block', fontSize: '0.7rem', opacity: 0.8 }}>
-                {generationNames[gen]}
-              </span>
+              <X size={16} />
+              Clear Search
             </button>
-          ))}
-        </div>
+          </div>
+        )}
 
         {/* Filters */}
-        <div className="p-4 mb-4" style={{ background: theme.colors.bgCard, borderRadius: '16px', border: `1px solid ${theme.colors.border}` }}>
+        <div className="p-4 mb-4" style={{ background: theme.colors.bgCard, borderRadius: '16px', border: `1px solid ${theme.colors.border}`, position: 'relative' }}>
           <Row className="g-3">
             <Col md={6}>
-              <Form.Group>
+              <Form.Group style={{ position: 'relative' }}>
                 <Form.Label style={{ color: theme.colors.textPrimary, fontWeight: 600 }} className="d-flex align-items-center gap-2">
-                  <Search size={16} />Search Pokemon
+                  <Search size={16} />
+                  Search Pokemon (Global)
                 </Form.Label>
-                <Form.Control
-                  type="text"
-                  placeholder="Name or ID..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{ background: theme.colors.inputBg, border: `1px solid ${theme.colors.border}`, color: theme.colors.textPrimary, borderRadius: '12px', padding: '12px 16px' }}
-                />
+                <div className="d-flex gap-2">
+                  <Form.Control
+                    type="text"
+                    placeholder="Search any Pokemon by name or ID..."
+                    value={searchQuery}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleGlobalSearch()}
+                    style={{ background: theme.colors.inputBg, border: `1px solid ${theme.colors.border}`, color: theme.colors.textPrimary, borderRadius: '12px', padding: '12px 16px' }}
+                  />
+                  <button
+                    onClick={handleGlobalSearch}
+                    disabled={searchQuery.length < 2}
+                    style={{
+                      background: theme.gradients.primary,
+                      border: 'none',
+                      borderRadius: '12px',
+                      padding: '12px 20px',
+                      color: 'white',
+                      fontWeight: 600,
+                      cursor: searchQuery.length >= 2 ? 'pointer' : 'not-allowed',
+                      opacity: searchQuery.length >= 2 ? 1 : 0.5
+                    }}
+                  >
+                    <Globe size={18} />
+                  </button>
+                </div>
+
+                {/* Search Autocomplete Dropdown */}
+                {showSearchResults && searchResults.length > 0 && (
+                  <ListGroup
+                    style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      zIndex: 1000,
+                      maxHeight: '300px',
+                      overflowY: 'auto',
+                      borderRadius: '12px',
+                      marginTop: '4px',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
+                    }}
+                  >
+                    {searchResults.map((entry) => (
+                      <ListGroup.Item
+                        key={entry.id}
+                        action
+                        onClick={() => handleSelectSearchResult(entry)}
+                        style={{
+                          background: theme.colors.bgCard,
+                          color: theme.colors.textPrimary,
+                          border: `1px solid ${theme.colors.border}`,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          padding: '12px 16px'
+                        }}
+                      >
+                        <img
+                          src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${entry.id}.png`}
+                          alt={entry.name}
+                          style={{ width: '40px', height: '40px' }}
+                        />
+                        <div>
+                          <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>{entry.name.replace(/-/g, ' ')}</div>
+                          <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>#{entry.id} • {generationNames[entry.generation]}</div>
+                        </div>
+                      </ListGroup.Item>
+                    ))}
+                  </ListGroup>
+                )}
               </Form.Group>
             </Col>
 
@@ -201,7 +383,7 @@ export default function Pokedex() {
                 </Form.Label>
                 <Form.Select
                   value={selectedType}
-                  onChange={(e) => setSelectedType(e.target.value as any)}
+                  onChange={(e) => setSelectedType(e.target.value as PokemonType | 'all')}
                   style={{ background: theme.colors.inputBg, border: `1px solid ${theme.colors.border}`, color: theme.colors.textPrimary, borderRadius: '12px', padding: '12px 16px' }}
                 >
                   <option value="all">All Types</option>
@@ -217,14 +399,16 @@ export default function Pokedex() {
         {/* Results Count */}
         <div className="mb-3 d-flex justify-content-between align-items-center" style={{ color: theme.colors.textSecondary }}>
           <span>{filteredPokemon.length} Pokemon {selectedType !== 'all' && `(${selectedType} type)`}</span>
-          <span>Page {currentPage} of {totalPages}</span>
+          {!isGlobalSearch && <span>Page {currentPage} of {totalPages}</span>}
         </div>
 
         {/* Pokemon Grid */}
-        {loading ? (
+        {(loading || loadingSearch) ? (
           <div className="text-center py-5">
             <Spinner animation="border" style={{ color: theme.colors.primary, width: '48px', height: '48px' }} />
-            <p className="mt-3" style={{ color: theme.colors.textSecondary }}>Loading Pokemon...</p>
+            <p className="mt-3" style={{ color: theme.colors.textSecondary }}>
+              {loadingSearch ? 'Searching all Pokemon...' : 'Loading Pokemon...'}
+            </p>
           </div>
         ) : (
           <>
@@ -243,8 +427,8 @@ export default function Pokedex() {
               </div>
             )}
 
-            {/* Pagination */}
-            {totalPages > 1 && (
+            {/* Pagination - only show when not in global search */}
+            {!isGlobalSearch && totalPages > 1 && (
               <div className="d-flex justify-content-center mb-4">
                 <Pagination>
                   <Pagination.First onClick={() => handlePageChange(1)} disabled={currentPage === 1} />
