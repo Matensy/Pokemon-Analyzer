@@ -1,362 +1,243 @@
-import { useState, useEffect } from 'react';
-import { Container, Row, Col, Form, Pagination } from 'react-bootstrap';
-import { Search, Filter, Loader2 } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Container, Row, Col, Form, Pagination, Spinner } from 'react-bootstrap';
+import { Search, Filter } from 'lucide-react';
 import { useThemeStore } from '../store/themeStore';
 import { useTeamStore } from '../store/teamStore';
-import { fetchPokemon, fetchPokemonByGeneration } from '../services/pokeapi';
+import { fetchPokemonBatch, fetchPokemon } from '../services/pokeapi';
 import { generateMovesets } from '../services/movesetService';
 import { Pokemon, PokemonType, Generation } from '../types/pokemon';
 import PokemonCard from '../components/PokemonCard';
 import PokemonDetailModal from '../components/PokemonDetailModal';
-import LoadingSpinner from '../components/LoadingSpinner';
 
 const ITEMS_PER_PAGE = 24;
+
+// Generation ranges
+const GEN_RANGES: Record<number, [number, number]> = {
+  1: [1, 151],
+  2: [152, 251],
+  3: [252, 386],
+  4: [387, 493],
+  5: [494, 649],
+  6: [650, 721],
+  7: [722, 809],
+  8: [810, 905],
+  9: [906, 1025]
+};
 
 export default function Pokedex() {
   const { theme } = useThemeStore();
   const { addPokemon } = useTeamStore();
 
   const [pokemon, setPokemon] = useState<Pokemon[]>([]);
-  const [filteredPokemon, setFilteredPokemon] = useState<Pokemon[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(151);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<PokemonType | 'all'>('all');
-  const [selectedGen, setSelectedGen] = useState<Generation | 'all'>('all');
+  const [selectedGen, setSelectedGen] = useState<Generation>(1);
 
   // Modal
   const [selectedPokemon, setSelectedPokemon] = useState<Pokemon | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
-  // Track loaded generations
-  const [loadedGens, setLoadedGens] = useState<Set<number>>(new Set([1]));
-
-  // Load initial Pokemon
-  useEffect(() => {
-    loadPokemon();
-  }, []);
-
-  // Apply filters
-  useEffect(() => {
-    applyFilters();
-  }, [pokemon, searchQuery, selectedType, selectedGen]);
-
-  async function loadPokemon() {
+  // Load Pokemon for current page
+  const loadPage = useCallback(async (gen: Generation, page: number) => {
     setLoading(true);
     try {
-      // Load first 151 Pokemon initially
-      const promises = Array.from({ length: 151 }, (_, i) =>
-        fetchPokemon(i + 1).then((p) => {
-          p.recommendedMovesets = generateMovesets(p);
-          return p;
-        })
-      );
+      const [start, end] = GEN_RANGES[gen];
+      const genSize = end - start + 1;
+      setTotalCount(genSize);
 
-      const results = await Promise.all(promises);
+      const pageStart = start + (page - 1) * ITEMS_PER_PAGE;
+      const pageEnd = Math.min(pageStart + ITEMS_PER_PAGE - 1, end);
+
+      if (pageStart > end) {
+        setPokemon([]);
+        setLoading(false);
+        return;
+      }
+
+      const ids = Array.from({ length: pageEnd - pageStart + 1 }, (_, i) => pageStart + i);
+      const results = await fetchPokemonBatch(ids, 8);
       setPokemon(results);
     } catch (error) {
       console.error('Error loading Pokemon:', error);
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  async function loadMorePokemon(gen: Generation) {
-    if (loadedGens.has(gen)) return;
+  // Initial load
+  useEffect(() => {
+    loadPage(1, 1);
+  }, [loadPage]);
 
-    setLoadingMore(true);
-    try {
-      const ids = await fetchPokemonByGeneration(gen);
-      const promises = ids.map((id) =>
-        fetchPokemon(id).then((p) => {
-          p.recommendedMovesets = generateMovesets(p);
-          return p;
-        })
-      );
-
-      const results = await Promise.all(promises);
-      setPokemon((prev) => {
-        const newPokemon = results.filter(
-          (r) => !prev.some((p) => p.id === r.id)
-        );
-        return [...prev, ...newPokemon].sort((a, b) => a.id - b.id);
-      });
-      setLoadedGens((prev) => new Set([...prev, gen]));
-    } catch (error) {
-      console.error('Error loading more Pokemon:', error);
-    } finally {
-      setLoadingMore(false);
-    }
-  }
-
-  function applyFilters() {
-    let filtered = [...pokemon];
-
-    // Search filter
+  // Filter by type and search (client-side)
+  const filteredPokemon = pokemon.filter(p => {
     if (searchQuery) {
-      filtered = filtered.filter(
-        (p) =>
-          p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.id.toString().includes(searchQuery)
-      );
+      const query = searchQuery.toLowerCase();
+      if (!p.name.includes(query) && !p.id.toString().includes(query)) {
+        return false;
+      }
     }
-
-    // Type filter
-    if (selectedType !== 'all') {
-      filtered = filtered.filter((p) => p.types.includes(selectedType));
+    if (selectedType !== 'all' && !p.types.includes(selectedType)) {
+      return false;
     }
+    return true;
+  });
 
-    // Generation filter
-    if (selectedGen !== 'all') {
-      filtered = filtered.filter((p) => p.generation === selectedGen);
-    }
-
-    setFilteredPokemon(filtered);
+  // Change generation
+  const handleGenChange = (gen: Generation) => {
+    setSelectedGen(gen);
     setCurrentPage(1);
-  }
+    setSearchQuery('');
+    setSelectedType('all');
+    loadPage(gen, 1);
+  };
 
-  function handlePokemonClick(p: Pokemon) {
-    setSelectedPokemon(p);
+  // Change page
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    loadPage(selectedGen, page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Open Pokemon details with full data
+  const handlePokemonClick = async (p: Pokemon) => {
+    setLoadingDetails(true);
     setShowModal(true);
-  }
+    try {
+      const fullPokemon = await fetchPokemon(p.id);
+      fullPokemon.recommendedMovesets = generateMovesets(fullPokemon);
+      setSelectedPokemon(fullPokemon);
+    } catch {
+      setSelectedPokemon(p);
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
 
-  function handleAddToTeam(p: Pokemon) {
+  const handleAddToTeam = (p: Pokemon) => {
     addPokemon(p);
-  }
-
-  // Pagination
-  const totalPages = Math.ceil(filteredPokemon.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const currentPokemon = filteredPokemon.slice(
-    startIndex,
-    startIndex + ITEMS_PER_PAGE
-  );
+  };
 
   const types: PokemonType[] = [
     'normal', 'fire', 'water', 'electric', 'grass', 'ice',
     'fighting', 'poison', 'ground', 'flying', 'psychic',
-    'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy',
+    'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy'
   ];
 
   const generationNames: Record<number, string> = {
-    1: 'Kanto',
-    2: 'Johto',
-    3: 'Hoenn',
-    4: 'Sinnoh',
-    5: 'Unova',
-    6: 'Kalos',
-    7: 'Alola',
-    8: 'Galar',
-    9: 'Paldea'
+    1: 'Kanto', 2: 'Johto', 3: 'Hoenn', 4: 'Sinnoh',
+    5: 'Unova', 6: 'Kalos', 7: 'Alola', 8: 'Galar', 9: 'Paldea'
   };
+
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
   return (
     <div style={{ background: theme.colors.bgPrimary, minHeight: '100vh', paddingTop: '30px' }}>
       <Container>
         {/* Header */}
         <div className="text-center mb-4">
-          <h1
-            className="gradient-text mb-2"
-            style={{ fontWeight: 800, fontSize: '2.5rem' }}
-          >
+          <h1 className="gradient-text mb-2" style={{ fontWeight: 800, fontSize: '2.5rem' }}>
             National Pokedex
           </h1>
           <p style={{ color: theme.colors.textSecondary }}>
-            Complete database with {pokemon.length} Pokemon | Click to view details
+            Browse all 1025 Pokemon across 9 generations
           </p>
         </div>
 
+        {/* Generation Selector */}
+        <div className="d-flex flex-wrap gap-2 justify-content-center mb-4">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((gen) => (
+            <button
+              key={gen}
+              onClick={() => handleGenChange(gen as Generation)}
+              style={{
+                padding: '10px 20px',
+                borderRadius: '12px',
+                border: 'none',
+                background: selectedGen === gen ? theme.gradients.primary : theme.colors.bgCard,
+                color: selectedGen === gen ? 'white' : theme.colors.textPrimary,
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: selectedGen === gen ? '0 4px 12px rgba(124, 58, 237, 0.3)' : 'none'
+              }}
+            >
+              Gen {gen}
+              <span style={{ display: 'block', fontSize: '0.7rem', opacity: 0.8 }}>
+                {generationNames[gen]}
+              </span>
+            </button>
+          ))}
+        </div>
+
         {/* Filters */}
-        <div
-          className="p-4 mb-4"
-          style={{
-            background: theme.colors.bgCard,
-            borderRadius: '16px',
-            border: `1px solid ${theme.colors.border}`,
-            boxShadow: theme.colors.shadowCard,
-          }}
-        >
+        <div className="p-4 mb-4" style={{ background: theme.colors.bgCard, borderRadius: '16px', border: `1px solid ${theme.colors.border}` }}>
           <Row className="g-3">
-            <Col md={4}>
+            <Col md={6}>
               <Form.Group>
-                <Form.Label
-                  style={{ color: theme.colors.textPrimary, fontWeight: 600 }}
-                  className="d-flex align-items-center gap-2"
-                >
-                  <Search size={16} />
-                  Search Pokemon
+                <Form.Label style={{ color: theme.colors.textPrimary, fontWeight: 600 }} className="d-flex align-items-center gap-2">
+                  <Search size={16} />Search Pokemon
                 </Form.Label>
                 <Form.Control
                   type="text"
                   placeholder="Name or ID..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{
-                    background: theme.colors.inputBg,
-                    border: `1px solid ${theme.colors.border}`,
-                    color: theme.colors.textPrimary,
-                    borderRadius: '12px',
-                    padding: '12px 16px',
-                  }}
+                  style={{ background: theme.colors.inputBg, border: `1px solid ${theme.colors.border}`, color: theme.colors.textPrimary, borderRadius: '12px', padding: '12px 16px' }}
                 />
               </Form.Group>
             </Col>
 
-            <Col md={4}>
+            <Col md={6}>
               <Form.Group>
-                <Form.Label
-                  style={{ color: theme.colors.textPrimary, fontWeight: 600 }}
-                  className="d-flex align-items-center gap-2"
-                >
-                  <Filter size={16} />
-                  Type
+                <Form.Label style={{ color: theme.colors.textPrimary, fontWeight: 600 }} className="d-flex align-items-center gap-2">
+                  <Filter size={16} />Type Filter
                 </Form.Label>
                 <Form.Select
                   value={selectedType}
                   onChange={(e) => setSelectedType(e.target.value as any)}
-                  style={{
-                    background: theme.colors.inputBg,
-                    border: `1px solid ${theme.colors.border}`,
-                    color: theme.colors.textPrimary,
-                    borderRadius: '12px',
-                    padding: '12px 16px',
-                  }}
+                  style={{ background: theme.colors.inputBg, border: `1px solid ${theme.colors.border}`, color: theme.colors.textPrimary, borderRadius: '12px', padding: '12px 16px' }}
                 >
                   <option value="all">All Types</option>
                   {types.map((type) => (
-                    <option key={type} value={type}>
-                      {type.charAt(0).toUpperCase() + type.slice(1)}
-                    </option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-            </Col>
-
-            <Col md={4}>
-              <Form.Group>
-                <Form.Label
-                  style={{ color: theme.colors.textPrimary, fontWeight: 600 }}
-                >
-                  Generation
-                </Form.Label>
-                <Form.Select
-                  value={selectedGen}
-                  onChange={(e) => {
-                    const gen = e.target.value as any;
-                    setSelectedGen(gen);
-                    if (gen !== 'all' && gen !== '1') {
-                      loadMorePokemon(parseInt(gen) as Generation);
-                    }
-                  }}
-                  style={{
-                    background: theme.colors.inputBg,
-                    border: `1px solid ${theme.colors.border}`,
-                    color: theme.colors.textPrimary,
-                    borderRadius: '12px',
-                    padding: '12px 16px',
-                  }}
-                >
-                  <option value="all">All Generations</option>
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((gen) => (
-                    <option key={gen} value={gen}>
-                      Gen {gen} - {generationNames[gen]}
-                    </option>
+                    <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>
                   ))}
                 </Form.Select>
               </Form.Group>
             </Col>
           </Row>
-
-          {/* Quick Gen Buttons */}
-          <div className="mt-3 d-flex flex-wrap gap-2">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((gen) => (
-              <button
-                key={gen}
-                onClick={() => {
-                  if (!loadedGens.has(gen)) {
-                    loadMorePokemon(gen as Generation);
-                  }
-                  setSelectedGen(gen as Generation);
-                }}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: '20px',
-                  border: 'none',
-                  background: selectedGen === gen
-                    ? theme.gradients.primary
-                    : theme.colors.bgHover,
-                  color: selectedGen === gen
-                    ? 'white'
-                    : theme.colors.textSecondary,
-                  fontWeight: 600,
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                Gen {gen}
-                {loadedGens.has(gen) && (
-                  <span style={{ marginLeft: '4px', opacity: 0.7 }}>✓</span>
-                )}
-              </button>
-            ))}
-          </div>
         </div>
 
-        {/* Loading More Indicator */}
-        {loadingMore && (
-          <div
-            className="text-center py-3 mb-3"
-            style={{
-              background: theme.colors.bgCard,
-              borderRadius: '12px',
-              border: `1px solid ${theme.colors.border}`,
-            }}
-          >
-            <Loader2 className="spinner-sm me-2" size={20} style={{ animation: 'spin 1s linear infinite' }} />
-            <span style={{ color: theme.colors.textSecondary }}>
-              Loading more Pokemon...
-            </span>
-          </div>
-        )}
-
         {/* Results Count */}
-        <div
-          className="mb-3 d-flex justify-content-between align-items-center"
-          style={{ color: theme.colors.textSecondary }}
-        >
-          <span>
-            Showing {currentPokemon.length} of {filteredPokemon.length} Pokemon
-          </span>
-          <span>
-            Page {currentPage} of {totalPages || 1}
-          </span>
+        <div className="mb-3 d-flex justify-content-between align-items-center" style={{ color: theme.colors.textSecondary }}>
+          <span>{filteredPokemon.length} Pokemon {selectedType !== 'all' && `(${selectedType} type)`}</span>
+          <span>Page {currentPage} of {totalPages}</span>
         </div>
 
         {/* Pokemon Grid */}
         {loading ? (
-          <LoadingSpinner />
+          <div className="text-center py-5">
+            <Spinner animation="border" style={{ color: theme.colors.primary, width: '48px', height: '48px' }} />
+            <p className="mt-3" style={{ color: theme.colors.textSecondary }}>Loading Pokemon...</p>
+          </div>
         ) : (
           <>
             <Row xs={1} sm={2} md={3} lg={4} className="g-4 mb-4">
-              {currentPokemon.map((p, index) => (
-                <Col key={p.id} className={`fade-in stagger-${(index % 5) + 1}`}>
-                  <PokemonCard
-                    pokemon={p}
-                    onClick={() => handlePokemonClick(p)}
-                  />
+              {filteredPokemon.map((p, index) => (
+                <Col key={p.id} className="fade-in" style={{ animationDelay: `${index * 0.03}s` }}>
+                  <PokemonCard pokemon={p} onClick={() => handlePokemonClick(p)} />
                 </Col>
               ))}
             </Row>
 
             {filteredPokemon.length === 0 && (
-              <div
-                className="text-center py-5"
-                style={{ color: theme.colors.textSecondary }}
-              >
+              <div className="text-center py-5" style={{ color: theme.colors.textSecondary }}>
                 <p style={{ fontSize: '1.2rem' }}>No Pokemon found</p>
                 <p>Try adjusting your search or filters</p>
               </div>
@@ -366,48 +247,24 @@ export default function Pokedex() {
             {totalPages > 1 && (
               <div className="d-flex justify-content-center mb-4">
                 <Pagination>
-                  <Pagination.First
-                    onClick={() => setCurrentPage(1)}
-                    disabled={currentPage === 1}
-                  />
-                  <Pagination.Prev
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                  />
+                  <Pagination.First onClick={() => handlePageChange(1)} disabled={currentPage === 1} />
+                  <Pagination.Prev onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} />
 
-                  {Array.from({ length: Math.min(7, totalPages) }, (_, i) => {
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     let page: number;
-                    if (totalPages <= 7) {
-                      page = i + 1;
-                    } else if (currentPage <= 4) {
-                      page = i + 1;
-                    } else if (currentPage >= totalPages - 3) {
-                      page = totalPages - 6 + i;
-                    } else {
-                      page = currentPage - 3 + i;
-                    }
+                    if (totalPages <= 5) page = i + 1;
+                    else if (currentPage <= 3) page = i + 1;
+                    else if (currentPage >= totalPages - 2) page = totalPages - 4 + i;
+                    else page = currentPage - 2 + i;
                     return (
-                      <Pagination.Item
-                        key={page}
-                        active={page === currentPage}
-                        onClick={() => setCurrentPage(page)}
-                        style={{
-                          background: page === currentPage ? theme.colors.primary : undefined,
-                        }}
-                      >
+                      <Pagination.Item key={page} active={page === currentPage} onClick={() => handlePageChange(page)}>
                         {page}
                       </Pagination.Item>
                     );
                   })}
 
-                  <Pagination.Next
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                  />
-                  <Pagination.Last
-                    onClick={() => setCurrentPage(totalPages)}
-                    disabled={currentPage === totalPages}
-                  />
+                  <Pagination.Next onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} />
+                  <Pagination.Last onClick={() => handlePageChange(totalPages)} disabled={currentPage === totalPages} />
                 </Pagination>
               </div>
             )}
@@ -417,11 +274,21 @@ export default function Pokedex() {
 
       {/* Pokemon Detail Modal */}
       <PokemonDetailModal
-        pokemon={selectedPokemon}
+        pokemon={loadingDetails ? null : selectedPokemon}
         show={showModal}
-        onHide={() => setShowModal(false)}
+        onHide={() => { setShowModal(false); setSelectedPokemon(null); }}
         onAddToTeam={handleAddToTeam}
       />
+
+      {/* Loading overlay for details */}
+      {loadingDetails && showModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div className="text-center">
+            <Spinner animation="border" style={{ color: 'white', width: '48px', height: '48px' }} />
+            <p className="mt-3" style={{ color: 'white' }}>Loading Pokemon details...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

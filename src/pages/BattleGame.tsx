@@ -1,16 +1,15 @@
 import { useState } from 'react';
-import { Container, Row, Col, Card, Button, Modal, ProgressBar, Badge, Alert } from 'react-bootstrap';
-import { Swords, Shield, Package, ArrowLeftRight, Zap, Heart } from 'lucide-react';
+import { Container, Row, Col, Card, Button, Modal, Badge } from 'react-bootstrap';
+import { Swords, Shield, RefreshCw, Zap, Check, X } from 'lucide-react';
 import { useThemeStore } from '../store/themeStore';
 import { useTeamStore } from '../store/teamStore';
 import { BattleState, BattlePokemon, BattleAction } from '../types/battle';
 import { Pokemon, Move } from '../types/pokemon';
 import { generateAITeam } from '../services/aiTeamGenerator';
 import { getAIAction } from '../services/battleAI';
-import { calculateDamage, applyDamage, healPokemon, cureStatus, processEndOfTurn, checkBattleEnd, getSpeedOrder } from '../services/battleEngine';
-import { STARTER_ITEMS, ALL_ITEMS } from '../data/items';
+import { calculateDamage, applyDamage, processEndOfTurn, checkBattleEnd, getSpeedOrder } from '../services/battleEngine';
+import { STARTER_ITEMS } from '../data/items';
 import { typeColors } from '../styles/themes';
-import MovesetSelector from '../components/MovesetSelector';
 import '../styles/battle-animations.css';
 
 export default function BattleGame() {
@@ -21,81 +20,85 @@ export default function BattleGame() {
   const [selectedForBattle, setSelectedForBattle] = useState<number[]>([]);
   const [currentMovesetIndex, setCurrentMovesetIndex] = useState(0);
   const [teamWithMovesets, setTeamWithMovesets] = useState<Pokemon[]>([]);
+  const [selectedMoves, setSelectedMoves] = useState<Move[]>([]);
 
   const [battleState, setBattleState] = useState<BattleState | null>(null);
   const [battleLog, setBattleLog] = useState<string[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [showSwitchModal, setShowSwitchModal] = useState(false);
 
-  const [showMoveSelect, setShowMoveSelect] = useState(false);
-  const [showWeaknessPanel, setShowWeaknessPanel] = useState(false);
-
-  const [animations, setAnimations] = useState<{
-    playerAttack: boolean;
-    aiAttack: boolean;
-    playerDamage: boolean;
-    aiDamage: boolean;
-    damageNumber: { value: number; x: number; y: number; isCritical: boolean } | null;
-    effectText: string | null;
-  }>({
+  const [animations, setAnimations] = useState({
     playerAttack: false,
     aiAttack: false,
     playerDamage: false,
     aiDamage: false,
-    damageNumber: null,
-    effectText: null,
+    effectText: ''
   });
 
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  // Start game
   const startGame = () => {
-    if (team.length < 6) {
-      alert('You need a full team of 6 Pokemon!');
+    if (team.length < 4) {
+      alert('You need at least 4 Pokemon!');
       return;
     }
     setGameState('team-select');
     setSelectedForBattle([]);
   };
 
-  // Confirm team selection (4 from 6)
   const confirmTeamSelection = () => {
     if (selectedForBattle.length !== 4) {
       alert('Select exactly 4 Pokemon!');
       return;
     }
-
     const selected = selectedForBattle.map(i => team[i]);
     setTeamWithMovesets(selected);
     setCurrentMovesetIndex(0);
+    setSelectedMoves([]);
     setGameState('moveset-select');
   };
 
-  // Handle moveset confirmation for one Pokemon
-  const handleMovesetConfirm = (moves: Move[]) => {
+  const toggleMoveSelection = (move: Move) => {
+    if (selectedMoves.find(m => m.name === move.name)) {
+      setSelectedMoves(selectedMoves.filter(m => m.name !== move.name));
+    } else if (selectedMoves.length < 4) {
+      setSelectedMoves([...selectedMoves, move]);
+    }
+  };
+
+  const confirmMoveset = () => {
+    if (selectedMoves.length !== 4) return;
+
     const updated = [...teamWithMovesets];
-    updated[currentMovesetIndex] = {
-      ...updated[currentMovesetIndex],
-      moves: moves
-    };
+    updated[currentMovesetIndex] = { ...updated[currentMovesetIndex], moves: selectedMoves };
     setTeamWithMovesets(updated);
 
     if (currentMovesetIndex < 3) {
       setCurrentMovesetIndex(currentMovesetIndex + 1);
+      setSelectedMoves([]);
     } else {
-      // All movesets selected, start battle!
       initializeBattle(updated);
     }
   };
 
-  // Initialize battle
-  const initializeBattle = async (playerPokemon: Pokemon[]) => {
-    // Convert to BattlePokemon
-    const playerTeamBattle = playerPokemon.map(p => convertToBattlePokemon(p));
+  const autoSelectMoves = () => {
+    const pokemon = teamWithMovesets[currentMovesetIndex];
+    const attackingMoves = pokemon.moves.filter(m => m.power && m.power > 0);
+    const bestMoves = attackingMoves
+      .sort((a, b) => (b.power || 0) - (a.power || 0))
+      .slice(0, 4);
 
-    // Generate AI team
+    if (bestMoves.length >= 4) {
+      setSelectedMoves(bestMoves);
+    } else {
+      const remaining = pokemon.moves.filter(m => !bestMoves.includes(m));
+      setSelectedMoves([...bestMoves, ...remaining.slice(0, 4 - bestMoves.length)]);
+    }
+  };
+
+  const initializeBattle = async (playerPokemon: Pokemon[]) => {
+    const playerTeamBattle = playerPokemon.map(convertToBattlePokemon);
     const aiPokemon = await generateAITeam(playerPokemon);
     const aiSelected = aiPokemon.slice(0, 4);
 
-    // Set active Pokemon
     playerTeamBattle[0].isActive = true;
     aiSelected[0].isActive = true;
 
@@ -113,11 +116,7 @@ export default function BattleGame() {
         remainingPokemon: 4
       },
       currentTurn: 1,
-      battleLog: [
-        '⚔️ Battle Start!',
-        `Go! ${playerTeamBattle[0].name}!`,
-        `Opponent sent out ${aiSelected[0].name}!`
-      ],
+      battleLog: ['Battle Start!', `Go ${playerTeamBattle[0].name}!`, `Opponent sent ${aiSelected[0].name}!`],
       isPlayerTurn: true,
       battleEnded: false,
       format: 'vgc'
@@ -131,112 +130,72 @@ export default function BattleGame() {
   const convertToBattlePokemon = (pokemon: Pokemon): BattlePokemon => {
     const level = 50;
     const maxHp = Math.floor(((2 * pokemon.stats.hp + 31 + 63) * level) / 100) + level + 10;
-
     return {
       ...pokemon,
       currentHp: maxHp,
       maxHp,
       level,
       status: { name: null },
-      statStages: {
-        attack: 0,
-        defense: 0,
-        specialAttack: 0,
-        specialDefense: 0,
-        speed: 0,
-        accuracy: 0,
-        evasion: 0
-      },
+      statStages: { attack: 0, defense: 0, specialAttack: 0, specialDefense: 0, speed: 0, accuracy: 0, evasion: 0 },
       selectedMoves: pokemon.moves.slice(0, 4),
       isActive: false,
       isFainted: false
     };
   };
 
-  // Calculate type effectiveness for UI display
-  const getEffectivenessMultiplier = (moveType: string, defenderTypes: string[]): number => {
-    // Simplified - would use full type chart
-    let mult = 1;
-    defenderTypes.forEach(type => {
-      // Add actual type chart here
-      if (moveType === 'fire' && type === 'grass') mult *= 2;
-      if (moveType === 'water' && type === 'fire') mult *= 2;
-      if (moveType === 'grass' && type === 'water') mult *= 2;
-      if (moveType === 'electric' && type === 'water') mult *= 2;
-      // ... etc
-    });
-    return mult;
-  };
-
-  // Handle move selection with visual feedback
-  const handleMoveSelect = (moveIndex: number) => {
+  const handleMoveSelect = async (moveIndex: number) => {
     if (!battleState || isProcessing) return;
-
-    setShowMoveSelect(false);
     setIsProcessing(true);
 
-    const playerAction: BattleAction = {
-      type: 'move',
-      pokemonIndex: 0,
-      moveIndex,
-      targetIndex: 0
-    };
-
-    processTurn(playerAction);
+    const playerAction: BattleAction = { type: 'move', pokemonIndex: 0, moveIndex, targetIndex: 0 };
+    await processTurn(playerAction);
   };
 
-  const processTurn = (playerAction: BattleAction) => {
+  const handleSwitch = async (pokemonIndex: number) => {
+    if (!battleState || isProcessing) return;
+    setShowSwitchModal(false);
+    setIsProcessing(true);
+
+    const playerAction: BattleAction = { type: 'switch', pokemonIndex: 0, switchToIndex: pokemonIndex };
+    await processTurn(playerAction);
+  };
+
+  const processTurn = async (playerAction: BattleAction) => {
     if (!battleState) return;
 
-    setTimeout(async () => {
-      const newState = { ...battleState };
-      const logs: string[] = [];
+    const newState = { ...battleState };
+    const logs: string[] = [];
 
-      // Get AI action
-      const aiDecision = getAIAction(newState.aiTeam, newState.playerTeam);
+    const aiDecision = getAIAction(newState.aiTeam, newState.playerTeam);
+    const playerActive = newState.playerTeam.selectedForBattle.find(p => p.isActive)!;
+    const aiActive = newState.aiTeam.selectedForBattle.find(p => p.isActive)!;
 
-      const playerActive = newState.playerTeam.selectedForBattle.find(p => p.isActive)!;
-      const aiActive = newState.aiTeam.selectedForBattle.find(p => p.isActive)!;
+    const [first] = getSpeedOrder(playerActive, aiActive);
+    const firstAction = first === playerActive ? playerAction : aiDecision.action;
+    const secondAction = first === playerActive ? aiDecision.action : playerAction;
+    const firstIsPlayer = first === playerActive;
 
-      // Determine speed order
-      const [first] = getSpeedOrder(playerActive, aiActive);
-      const firstAction = first === playerActive ? playerAction : aiDecision.action;
-      const secondAction = first === playerActive ? aiDecision.action : playerAction;
-      const firstIsPlayer = first === playerActive;
+    await executeAction(firstAction, firstIsPlayer, newState, logs);
 
-      // Execute first action with animation
-      await executeActionWithAnimation(firstAction, firstIsPlayer, newState, logs);
+    if (!checkBattleEnd(newState)) {
+      await new Promise(r => setTimeout(r, 800));
+      await executeAction(secondAction, !firstIsPlayer, newState, logs);
+    }
 
-      if (!checkBattleEnd(newState)) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        await executeActionWithAnimation(secondAction, !firstIsPlayer, newState, logs);
-      }
+    const endTurnLogs = processEndOfTurn(newState);
+    logs.push(...endTurnLogs);
+    checkBattleEnd(newState);
 
-      // End of turn effects
-      const endTurnLogs = processEndOfTurn(newState);
-      logs.push(...endTurnLogs);
+    if (newState.battleEnded) setGameState('ended');
 
-      checkBattleEnd(newState);
-
-      if (newState.battleEnded) {
-        setGameState('ended');
-      }
-
-      newState.currentTurn++;
-      newState.battleLog.push(...logs);
-
-      setBattleState(newState);
-      setBattleLog([...newState.battleLog]);
-      setIsProcessing(false);
-    }, 500);
+    newState.currentTurn++;
+    newState.battleLog.push(...logs);
+    setBattleState(newState);
+    setBattleLog([...newState.battleLog]);
+    setIsProcessing(false);
   };
 
-  const executeActionWithAnimation = async (
-    action: BattleAction,
-    isPlayer: boolean,
-    state: BattleState,
-    logs: string[]
-  ) => {
+  const executeAction = async (action: BattleAction, isPlayer: boolean, state: BattleState, logs: string[]) => {
     const actingTeam = isPlayer ? state.playerTeam : state.aiTeam;
     const targetTeam = isPlayer ? state.aiTeam : state.playerTeam;
 
@@ -245,647 +204,383 @@ export default function BattleGame() {
       const defender = targetTeam.selectedForBattle.find(p => p.isActive)!;
       const move = attacker.selectedMoves[action.moveIndex!];
 
-      // Attack animation
-      setAnimations(prev => ({
-        ...prev,
-        [isPlayer ? 'playerAttack' : 'aiAttack']: true
-      }));
-
-      await new Promise(resolve => setTimeout(resolve, 300));
+      setAnimations(prev => ({ ...prev, [isPlayer ? 'playerAttack' : 'aiAttack']: true }));
+      await new Promise(r => setTimeout(r, 300));
 
       const damageCalc = calculateDamage(attacker, defender, move);
       logs.push(damageCalc.description);
 
-      // Damage animation
       setAnimations(prev => ({
         ...prev,
         [isPlayer ? 'aiDamage' : 'playerDamage']: true,
-        damageNumber: {
-          value: damageCalc.damage,
-          x: isPlayer ? 70 : 30,
-          y: 40,
-          isCritical: damageCalc.isCritical
-        },
-        effectText: damageCalc.effectiveness > 1
-          ? "Super Effective!"
-          : damageCalc.effectiveness < 1 && damageCalc.effectiveness > 0
-          ? "Not very effective..."
-          : null
+        effectText: damageCalc.effectiveness > 1 ? 'Super Effective!' : damageCalc.effectiveness < 1 ? 'Not very effective...' : ''
       }));
 
-      await new Promise(resolve => setTimeout(resolve, 800));
-
+      await new Promise(r => setTimeout(r, 600));
       applyDamage(defender, damageCalc.damage);
 
       if (defender.isFainted) {
         logs.push(`${defender.name} fainted!`);
-
-        const nextPokemon = targetTeam.selectedForBattle.find(p => !p.isFainted && !p.isActive);
-        if (nextPokemon) {
+        const next = targetTeam.selectedForBattle.find(p => !p.isFainted && !p.isActive);
+        if (next) {
           defender.isActive = false;
-          nextPokemon.isActive = true;
-          logs.push(`${isPlayer ? 'Opponent' : 'You'} sent out ${nextPokemon.name}!`);
+          next.isActive = true;
+          logs.push(`${isPlayer ? 'Opponent' : 'You'} sent out ${next.name}!`);
         }
       }
 
-      // Reset animations
-      setAnimations({
-        playerAttack: false,
-        aiAttack: false,
-        playerDamage: false,
-        aiDamage: false,
-        damageNumber: null,
-        effectText: null
-      });
+      setAnimations({ playerAttack: false, aiAttack: false, playerDamage: false, aiDamage: false, effectText: '' });
     } else if (action.type === 'switch') {
       const current = actingTeam.selectedForBattle.find(p => p.isActive)!;
       const switchTo = actingTeam.selectedForBattle[action.switchToIndex!];
-
       current.isActive = false;
       switchTo.isActive = true;
-
       logs.push(`${isPlayer ? 'You' : 'Opponent'} switched to ${switchTo.name}!`);
-    } else if (action.type === 'item' && isPlayer) {
-      const item = ALL_ITEMS.find(i => i.id === action.itemId);
-      const target = actingTeam.selectedForBattle[action.targetIndex || 0];
-
-      if (item) {
-        if (item.category === 'healing') {
-          const healed = healPokemon(target, item.power || 0);
-          logs.push(`Used ${item.name}! ${target.name} restored ${healed} HP!`);
-        } else if (item.category === 'status') {
-          cureStatus(target);
-          logs.push(`Used ${item.name}! ${target.name}'s status was cured!`);
-        }
-
-        const itemIndex = actingTeam.items.findIndex(i => i.id === item.id);
-        if (itemIndex !== -1) {
-          actingTeam.items.splice(itemIndex, 1);
-        }
-      }
     }
   };
 
+  // MENU SCREEN
   if (gameState === 'menu') {
     return (
-      <div
-        className="d-flex align-items-center justify-content-center"
-        style={{
-          background: `linear-gradient(135deg, ${theme.colors.bgPrimary}, ${theme.colors.bgSecondary})`,
-          minHeight: '100vh',
-        }}
-      >
-        <Card
-          className="text-center p-5 slide-in-left"
-          style={{
-            background: theme.colors.bgCard,
-            border: `2px solid ${theme.colors.primary}`,
-            borderRadius: '24px',
-            maxWidth: '600px',
-            boxShadow: `0 20px 60px ${theme.colors.shadow}`,
-          }}
-        >
-          <div className="mb-4">
-            <h1
-              style={{
-                fontSize: '3rem',
-                fontWeight: 900,
-                background: theme.gradients.primary,
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                marginBottom: '16px',
-              }}
-            >
-              ⚔️ POKEMON CHAMPIONS ⚔️
-            </h1>
-            <p style={{ color: theme.colors.textSecondary, fontSize: '1.2rem' }}>
-              VGC Battle System
-            </p>
+      <div style={{ background: theme.colors.bgPrimary, minHeight: '100vh' }} className="d-flex align-items-center justify-content-center p-4">
+        <Card style={{ background: theme.colors.bgCard, border: `2px solid ${theme.colors.primary}`, borderRadius: '24px', maxWidth: '500px', width: '100%' }} className="p-4 text-center">
+          <div style={{ background: theme.gradients.primary, borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
+            <h1 style={{ color: 'white', fontWeight: 800, fontSize: '2rem', margin: 0 }}>Pokemon Champions</h1>
+            <p style={{ color: 'rgba(255,255,255,0.8)', margin: '8px 0 0' }}>VGC Battle Simulator</p>
           </div>
 
-          <div className="mb-4" style={{ color: theme.colors.textPrimary }}>
-            <p><Zap className="me-2" size={20} />Complete battle animations</p>
-            <p><Swords className="me-2" size={20} />Real-time damage calculation</p>
-            <p><Shield className="me-2" size={20} />Type effectiveness indicators</p>
-            <p><Heart className="me-2" size={20} />Items & status effects</p>
+          <div style={{ color: theme.colors.textSecondary, marginBottom: '24px' }}>
+            <div className="d-flex align-items-center justify-content-center gap-2 mb-2"><Swords size={18} /> Real damage calculation</div>
+            <div className="d-flex align-items-center justify-content-center gap-2 mb-2"><Shield size={18} /> Type effectiveness</div>
+            <div className="d-flex align-items-center justify-content-center gap-2"><Zap size={18} /> AI opponent</div>
           </div>
 
-          <Button
-            size="lg"
-            onClick={startGame}
-            disabled={team.length < 6}
-            style={{
-              background: theme.gradients.primary,
-              border: 'none',
-              padding: '18px 50px',
-              fontSize: '1.3rem',
-              fontWeight: 700,
-              borderRadius: '16px',
-              boxShadow: '0 8px 24px rgba(139, 92, 246, 0.4)',
-            }}
-          >
-            {team.length < 6 ? 'Need 6 Pokemon to Battle' : 'START BATTLE'}
+          <Button size="lg" onClick={startGame} disabled={team.length < 4} style={{ background: theme.gradients.primary, border: 'none', padding: '16px 32px', fontWeight: 700, borderRadius: '12px' }}>
+            {team.length < 4 ? `Need ${4 - team.length} more Pokemon` : 'Start Battle'}
           </Button>
-
-          {team.length < 6 && (
-            <Alert variant="warning" className="mt-4">
-              Go to Team Builder and add {6 - team.length} more Pokemon!
-            </Alert>
-          )}
         </Card>
       </div>
     );
   }
 
+  // TEAM SELECT SCREEN
   if (gameState === 'team-select') {
     return (
-      <Container className="py-5">
-        <Card style={{ background: theme.colors.bgCard, border: `2px solid ${theme.colors.border}`, borderRadius: '16px' }}>
-          <Card.Header style={{ background: theme.colors.bgTertiary, borderBottom: `2px solid ${theme.colors.border}` }}>
-            <h3 style={{ color: theme.colors.textPrimary, margin: 0 }}>
-              Select 4 Pokemon for Battle ({selectedForBattle.length}/4)
-            </h3>
-          </Card.Header>
-          <Card.Body>
-            <Row xs={2} md={3} lg={6} className="g-3 mb-4">
-              {team.map((pokemon, index) => {
-                const isSelected = selectedForBattle.includes(index);
-                return (
-                  <Col key={pokemon.id}>
-                    <Card
-                      onClick={() => {
-                        if (isSelected) {
-                          setSelectedForBattle(selectedForBattle.filter(i => i !== index));
-                        } else if (selectedForBattle.length < 4) {
-                          setSelectedForBattle([...selectedForBattle, index]);
-                        }
-                      }}
-                      style={{
-                        background: isSelected ? theme.colors.primary : theme.colors.bgTertiary,
-                        border: `3px solid ${isSelected ? theme.colors.primary : theme.colors.border}`,
-                        cursor: 'pointer',
-                        transform: isSelected ? 'scale(1.05)' : 'scale(1)',
-                        transition: 'all 0.3s ease',
-                      }}
-                      className="text-center p-3 card-hover"
-                    >
-                      <img
-                        src={pokemon.artwork || pokemon.sprite}
-                        alt={pokemon.name}
-                        style={{ width: '100%', height: 'auto', maxWidth: '120px', margin: '0 auto' }}
-                      />
-                      <h6 style={{ color: isSelected ? '#FFFFFF' : theme.colors.textPrimary, marginTop: '8px', textTransform: 'capitalize' }}>
-                        {pokemon.name}
-                      </h6>
-                      <div className="d-flex gap-1 justify-content-center flex-wrap">
-                        {pokemon.types.map(type => (
-                          <Badge key={type} style={{ background: typeColors[type], fontSize: '0.7rem' }}>
-                            {type}
-                          </Badge>
-                        ))}
-                      </div>
-                    </Card>
-                  </Col>
-                );
-              })}
-            </Row>
+      <div style={{ background: theme.colors.bgPrimary, minHeight: '100vh', padding: '24px' }}>
+        <Container>
+          <h2 style={{ color: theme.colors.textPrimary, marginBottom: '8px' }}>Select Your Team</h2>
+          <p style={{ color: theme.colors.textSecondary, marginBottom: '24px' }}>Choose 4 Pokemon for battle ({selectedForBattle.length}/4)</p>
 
-            <div className="text-center">
-              <Button
-                size="lg"
-                onClick={confirmTeamSelection}
-                disabled={selectedForBattle.length !== 4}
-                style={{
-                  background: theme.gradients.primary,
-                  border: 'none',
-                  padding: '15px 40px',
-                  fontSize: '1.2rem',
-                  fontWeight: 600,
-                }}
-              >
-                Continue ({selectedForBattle.length}/4)
-              </Button>
-            </div>
-          </Card.Body>
-        </Card>
-      </Container>
+          <Row xs={2} md={3} lg={6} className="g-3 mb-4">
+            {team.map((pokemon, index) => {
+              const isSelected = selectedForBattle.includes(index);
+              const order = selectedForBattle.indexOf(index) + 1;
+              return (
+                <Col key={pokemon.id}>
+                  <Card onClick={() => { if (isSelected) setSelectedForBattle(selectedForBattle.filter(i => i !== index)); else if (selectedForBattle.length < 4) setSelectedForBattle([...selectedForBattle, index]); }} style={{ background: isSelected ? theme.colors.primary : theme.colors.bgCard, border: `3px solid ${isSelected ? theme.colors.primary : theme.colors.border}`, cursor: 'pointer', transition: 'all 0.2s', position: 'relative' }} className="text-center p-3">
+                    {isSelected && <div style={{ position: 'absolute', top: 8, right: 8, background: '#22C55E', color: 'white', width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>{order}</div>}
+                    <img src={pokemon.artwork || pokemon.sprite} alt={pokemon.name} style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                    <div style={{ color: isSelected ? 'white' : theme.colors.textPrimary, fontWeight: 600, textTransform: 'capitalize', marginTop: '8px' }}>{pokemon.name}</div>
+                    <div className="d-flex gap-1 justify-content-center mt-1">{pokemon.types.map(type => <span key={type} style={{ background: typeColors[type], color: 'white', padding: '2px 8px', borderRadius: '8px', fontSize: '0.65rem', fontWeight: 600 }}>{type}</span>)}</div>
+                  </Card>
+                </Col>
+              );
+            })}
+          </Row>
+
+          <div className="text-center">
+            <Button size="lg" onClick={confirmTeamSelection} disabled={selectedForBattle.length !== 4} style={{ background: theme.gradients.primary, border: 'none', padding: '16px 48px', fontWeight: 700 }}>Continue</Button>
+          </div>
+        </Container>
+      </div>
     );
   }
 
+  // MOVESET SELECT SCREEN - REDESIGNED
   if (gameState === 'moveset-select') {
     const currentPokemon = teamWithMovesets[currentMovesetIndex];
+    const attackingMoves = currentPokemon.moves.filter(m => m.power && m.power > 0);
+    const statusMoves = currentPokemon.moves.filter(m => !m.power || m.power === 0);
 
     return (
-      <Container className="py-5">
-        <Alert variant="info" className="text-center mb-4">
-          <strong>Step {currentMovesetIndex + 1} of 4:</strong> Select moves for {currentPokemon.name}
-        </Alert>
+      <div style={{ background: theme.colors.bgPrimary, minHeight: '100vh', padding: '24px' }}>
+        <Container>
+          {/* Progress */}
+          <div className="d-flex gap-2 mb-4">
+            {[0, 1, 2, 3].map(i => (
+              <div key={i} style={{ flex: 1, height: '8px', borderRadius: '4px', background: i <= currentMovesetIndex ? theme.colors.primary : theme.colors.border }} />
+            ))}
+          </div>
 
-        <MovesetSelector
-          pokemon={currentPokemon}
-          onConfirm={handleMovesetConfirm}
-          show={true}
-          onHide={() => {}}
-        />
-      </Container>
+          {/* Pokemon Header */}
+          <Card style={{ background: theme.gradients.primary, border: 'none', borderRadius: '16px', marginBottom: '24px' }} className="p-4">
+            <Row className="align-items-center">
+              <Col xs="auto">
+                <img src={currentPokemon.artwork || currentPokemon.sprite} alt={currentPokemon.name} style={{ width: '100px', height: '100px', objectFit: 'contain' }} />
+              </Col>
+              <Col>
+                <h3 style={{ color: 'white', margin: 0, textTransform: 'capitalize' }}>{currentPokemon.name}</h3>
+                <div className="d-flex gap-2 mt-2">
+                  {currentPokemon.types.map(type => <span key={type} style={{ background: 'rgba(255,255,255,0.2)', color: 'white', padding: '4px 12px', borderRadius: '12px', fontWeight: 600 }}>{type}</span>)}
+                </div>
+              </Col>
+              <Col xs="auto">
+                <Button variant="light" onClick={autoSelectMoves} style={{ fontWeight: 600 }}><Zap size={16} className="me-2" />Auto-Select</Button>
+              </Col>
+            </Row>
+          </Card>
+
+          {/* Selected Moves */}
+          <div style={{ background: theme.colors.bgCard, border: `1px solid ${theme.colors.border}`, borderRadius: '12px', padding: '16px', marginBottom: '24px' }}>
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <span style={{ color: theme.colors.textPrimary, fontWeight: 600 }}>Selected Moves ({selectedMoves.length}/4)</span>
+              {selectedMoves.length > 0 && <Button variant="link" size="sm" onClick={() => setSelectedMoves([])}>Clear All</Button>}
+            </div>
+            <div className="d-flex gap-2 flex-wrap">
+              {selectedMoves.length === 0 ? (
+                <span style={{ color: theme.colors.textMuted }}>Click moves below to select</span>
+              ) : selectedMoves.map((move, i) => (
+                <div key={i} onClick={() => toggleMoveSelection(move)} style={{ background: typeColors[move.type], color: 'white', padding: '10px 16px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
+                  {move.name}<X size={14} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Attacking Moves */}
+          {attackingMoves.length > 0 && (
+            <div className="mb-4">
+              <h5 style={{ color: theme.colors.textPrimary, marginBottom: '12px' }}><Swords size={18} className="me-2" />Attacking Moves</h5>
+              <Row xs={1} md={2} lg={3} className="g-3">
+                {attackingMoves.map((move, index) => {
+                  const isSelected = selectedMoves.find(m => m.name === move.name);
+                  const hasSTAB = currentPokemon.types.includes(move.type);
+                  const isDisabled = selectedMoves.length >= 4 && !isSelected;
+
+                  return (
+                    <Col key={index}>
+                      <Card onClick={() => !isDisabled && toggleMoveSelection(move)} style={{ background: isSelected ? typeColors[move.type] : theme.colors.bgCard, border: `2px solid ${isSelected ? typeColors[move.type] : theme.colors.border}`, cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.5 : 1, transition: 'all 0.2s' }} className="p-3 h-100">
+                        <div className="d-flex justify-content-between align-items-start mb-2">
+                          <div>
+                            <div style={{ fontWeight: 700, color: isSelected ? 'white' : theme.colors.textPrimary, fontSize: '1rem' }}>
+                              {move.category === 'physical' ? '⚔️' : '✨'} {move.name}
+                            </div>
+                            <div className="d-flex gap-2 flex-wrap mt-1">
+                              <span style={{ background: isSelected ? 'rgba(255,255,255,0.25)' : typeColors[move.type], color: 'white', padding: '2px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600 }}>{move.type}</span>
+                              {hasSTAB && <span style={{ background: '#F59E0B', color: 'white', padding: '2px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600 }}>STAB</span>}
+                            </div>
+                          </div>
+                          {isSelected && <div style={{ background: '#22C55E', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={14} color="white" /></div>}
+                        </div>
+                        <div className="d-flex gap-3 mt-2" style={{ color: isSelected ? 'rgba(255,255,255,0.9)' : theme.colors.textSecondary, fontSize: '0.85rem' }}>
+                          <span>Pwr: <strong>{move.power}</strong></span>
+                          <span>Acc: <strong>{move.accuracy}%</strong></span>
+                        </div>
+                      </Card>
+                    </Col>
+                  );
+                })}
+              </Row>
+            </div>
+          )}
+
+          {/* Status Moves */}
+          {statusMoves.length > 0 && (
+            <div className="mb-4">
+              <h5 style={{ color: theme.colors.textPrimary, marginBottom: '12px' }}><Shield size={18} className="me-2" />Status Moves</h5>
+              <Row xs={1} md={2} lg={3} className="g-3">
+                {statusMoves.slice(0, 6).map((move, index) => {
+                  const isSelected = selectedMoves.find(m => m.name === move.name);
+                  const isDisabled = selectedMoves.length >= 4 && !isSelected;
+
+                  return (
+                    <Col key={index}>
+                      <Card onClick={() => !isDisabled && toggleMoveSelection(move)} style={{ background: isSelected ? theme.colors.primary : theme.colors.bgCard, border: `2px solid ${isSelected ? theme.colors.primary : theme.colors.border}`, cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.5 : 1 }} className="p-3">
+                        <div className="d-flex justify-content-between align-items-center">
+                          <div>
+                            <div style={{ fontWeight: 600, color: isSelected ? 'white' : theme.colors.textPrimary }}>{move.name}</div>
+                            <span style={{ fontSize: '0.75rem', color: isSelected ? 'rgba(255,255,255,0.8)' : theme.colors.textSecondary }}>{move.type}</span>
+                          </div>
+                          {isSelected && <Check size={18} color="white" />}
+                        </div>
+                      </Card>
+                    </Col>
+                  );
+                })}
+              </Row>
+            </div>
+          )}
+
+          <div className="text-center mt-4">
+            <Button size="lg" onClick={confirmMoveset} disabled={selectedMoves.length !== 4} style={{ background: theme.gradients.primary, border: 'none', padding: '16px 48px', fontWeight: 700 }}>
+              {currentMovesetIndex < 3 ? `Next Pokemon (${currentMovesetIndex + 2}/4)` : 'Start Battle!'}
+            </Button>
+          </div>
+        </Container>
+      </div>
     );
   }
 
-  // BATTLE SCREEN - The actual game!
+  // BATTLE SCREEN - COMPLETELY REDESIGNED
   if (gameState === 'battle' && battleState) {
     const playerActive = battleState.playerTeam.selectedForBattle.find(p => p.isActive);
     const aiActive = battleState.aiTeam.selectedForBattle.find(p => p.isActive);
 
+    const getHpColor = (current: number, max: number) => {
+      const pct = current / max;
+      if (pct > 0.5) return '#22C55E';
+      if (pct > 0.2) return '#F59E0B';
+      return '#EF4444';
+    };
+
     return (
-      <div style={{ background: theme.colors.bgPrimary, minHeight: '100vh', paddingTop: '20px' }}>
-        <style>{`
-          @import url('/src/styles/battle-animations.css');
-        `}</style>
-
-        <Container fluid>
-          {/* Battle Field */}
-          <div className="battle-field mb-4" style={{ position: 'relative', minHeight: '500px' }}>
-            {/* AI Pokemon (Top) */}
-            <Row className="mb-5">
-              <Col md={{ span: 4, offset: 8 }} className="text-end">
-                <div className="slide-in-right">
-                  <div style={{ display: 'inline-block', position: 'relative' }}>
-                    <img
-                      src={aiActive?.sprite}
-                      alt={aiActive?.name}
-                      className={`sprite-float ${animations.aiAttack ? 'attack-special-anim' : ''} ${animations.aiDamage ? 'sprite-damage sprite-shake' : ''}`}
-                      style={{ width: '180px', height: '180px', imageRendering: 'pixelated', filter: 'drop-shadow(4px 4px 8px rgba(0,0,0,0.3))' }}
-                    />
-                    <div className="pokemon-platform"></div>
-                  </div>
-
-                  <Card style={{ background: 'rgba(0,0,0,0.7)', border: 'none', marginTop: '16px', backdropFilter: 'blur(10px)' }}>
-                    <Card.Body className="p-3">
-                      <div className="d-flex justify-content-between align-items-center mb-2">
-                        <div>
-                          <h4 style={{ color: '#FFFFFF', margin: 0, textTransform: 'capitalize' }}>
-                            {aiActive?.name}
-                            <Badge bg="danger" className="ms-2">Lv{aiActive?.level}</Badge>
-                          </h4>
-                          <div className="d-flex gap-1 mt-1">
-                            {aiActive?.types.map(type => (
-                              <Badge key={type} style={{ background: typeColors[type] }}>{type}</Badge>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div style={{ position: 'relative' }}>
-                        <small style={{ color: '#FFFFFF' }}>
-                          HP: {aiActive?.currentHp}/{aiActive?.maxHp}
-                        </small>
-                        <ProgressBar
-                          now={(aiActive!.currentHp / aiActive!.maxHp) * 100}
-                          variant={
-                            (aiActive!.currentHp / aiActive!.maxHp) > 0.5
-                              ? 'success'
-                              : (aiActive!.currentHp / aiActive!.maxHp) > 0.2
-                              ? 'warning'
-                              : 'danger'
-                          }
-                          style={{ height: '24px', fontSize: '1rem', fontWeight: 'bold' }}
-                          className={animations.aiDamage ? 'hp-bar-decrease' : ''}
-                        />
-                      </div>
-
-                      {aiActive?.status.name && (
-                        <Badge className={`status-icon status-${aiActive.status.name} mt-2`}>
-                          {aiActive.status.name.toUpperCase()}
-                        </Badge>
-                      )}
-                    </Card.Body>
-                  </Card>
-                </div>
-              </Col>
-            </Row>
-
-            {/* Damage Numbers & Effects */}
-            {animations.damageNumber && (
-              <div
-                className={`damage-number ${animations.damageNumber.isCritical ? 'damage-critical' : ''}`}
-                style={{
-                  left: `${animations.damageNumber.x}%`,
-                  top: `${animations.damageNumber.y}%`,
-                }}
-              >
-                {animations.damageNumber.isCritical && '☆ '}{animations.damageNumber.value}{animations.damageNumber.isCritical && ' ☆'}
-              </div>
-            )}
-
-            {animations.effectText && (
-              <div
-                className="battle-text-popup"
-                style={{
-                  left: '50%',
-                  top: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  color: animations.effectText.includes('Super') ? '#ff4444' : '#888888',
-                  fontSize: '3rem',
-                }}
-              >
-                {animations.effectText}
-              </div>
-            )}
-
-            {/* Player Pokemon (Bottom) */}
-            <Row>
-              <Col md={{ span: 4 }}>
-                <div className="slide-in-left">
-                  <Card style={{ background: 'rgba(0,0,0,0.7)', border: 'none', backdropFilter: 'blur(10px)' }}>
-                    <Card.Body className="p-3">
-                      <div className="d-flex justify-content-between align-items-center mb-2">
-                        <div>
-                          <h4 style={{ color: '#FFFFFF', margin: 0, textTransform: 'capitalize' }}>
-                            {playerActive?.name}
-                            <Badge bg="primary" className="ms-2">Lv{playerActive?.level}</Badge>
-                          </h4>
-                          <div className="d-flex gap-1 mt-1">
-                            {playerActive?.types.map(type => (
-                              <Badge key={type} style={{ background: typeColors[type] }}>{type}</Badge>
-                            ))}
-                          </div>
-                        </div>
-
-                        <Button
-                          size="sm"
-                          variant="outline-light"
-                          onClick={() => setShowWeaknessPanel(!showWeaknessPanel)}
-                        >
-                          <Shield size={16} /> Weaknesses
-                        </Button>
-                      </div>
-
-                      {showWeaknessPanel && playerActive && (
-                        <Alert variant="dark" className="mt-2 mb-2" style={{ fontSize: '0.85rem' }}>
-                          <strong>Weak to:</strong>{' '}
-                          {playerActive.typeEffectiveness.weakTo.map(type => (
-                            <Badge key={type} style={{ background: typeColors[type], marginRight: '4px' }}>
-                              {type} 2x
-                            </Badge>
-                          ))}
-                          {playerActive.typeEffectiveness.doubleWeakTo.map(type => (
-                            <Badge key={type} style={{ background: typeColors[type], marginRight: '4px' }}>
-                              {type} 4x
-                            </Badge>
-                          ))}
-                          <br />
-                          <strong>Resists:</strong>{' '}
-                          {playerActive.typeEffectiveness.resistantTo.map(type => (
-                            <Badge key={type} bg="success" style={{ marginRight: '4px' }}>
-                              {type}
-                            </Badge>
-                          ))}
-                        </Alert>
-                      )}
-
-                      <div style={{ position: 'relative' }}>
-                        <small style={{ color: '#FFFFFF' }}>
-                          HP: {playerActive?.currentHp}/{playerActive?.maxHp}
-                        </small>
-                        <ProgressBar
-                          now={(playerActive!.currentHp / playerActive!.maxHp) * 100}
-                          variant={
-                            (playerActive!.currentHp / playerActive!.maxHp) > 0.5
-                              ? 'success'
-                              : (playerActive!.currentHp / playerActive!.maxHp) > 0.2
-                              ? 'warning'
-                              : 'danger'
-                          }
-                          style={{ height: '24px', fontSize: '1rem', fontWeight: 'bold' }}
-                          className={animations.playerDamage ? 'hp-bar-decrease' : ''}
-                        />
-                      </div>
-
-                      {playerActive?.status.name && (
-                        <Badge className={`status-icon status-${playerActive.status.name} mt-2`}>
-                          {playerActive.status.name.toUpperCase()}
-                        </Badge>
-                      )}
-
-                      {playerActive?.heldItem && (
-                        <Badge bg="info" className="mt-2 ms-2">
-                          📦 {playerActive.heldItem.name}
-                        </Badge>
-                      )}
-                    </Card.Body>
-                  </Card>
-
-                  <div style={{ display: 'inline-block', position: 'relative', marginTop: '16px' }}>
-                    <img
-                      src={playerActive?.sprite}
-                      alt={playerActive?.name}
-                      className={`sprite-float ${animations.playerAttack ? 'attack-physical-anim' : ''} ${animations.playerDamage ? 'sprite-damage sprite-shake' : ''}`}
-                      style={{ width: '180px', height: '180px', imageRendering: 'pixelated', filter: 'drop-shadow(4px 4px 8px rgba(0,0,0,0.3))' }}
-                    />
-                    <div className="pokemon-platform"></div>
-                  </div>
-                </div>
-              </Col>
-            </Row>
+      <div style={{ background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #334155 100%)', minHeight: '100vh', padding: '16px' }}>
+        <Container fluid style={{ maxWidth: '1000px' }}>
+          {/* Turn Indicator */}
+          <div className="text-center mb-3">
+            <Badge style={{ background: 'rgba(255,255,255,0.15)', color: 'white', padding: '8px 20px', fontSize: '0.9rem' }}>Turn {battleState.currentTurn}</Badge>
           </div>
 
-          {/* Battle Controls */}
-          <Row>
-            <Col md={6}>
-              <Card
-                style={{
-                  background: theme.colors.bgCard,
-                  border: `2px solid ${theme.colors.border}`,
-                  maxHeight: '280px',
-                  overflow: 'auto',
-                }}
-              >
-                <Card.Header style={{ background: theme.colors.bgTertiary, position: 'sticky', top: 0, zIndex: 10 }}>
-                  <strong>Battle Log - Turn {battleState.currentTurn}</strong>
-                </Card.Header>
-                <Card.Body>
-                  {battleLog.slice(-12).map((log, i) => (
-                    <div key={i} style={{ color: theme.colors.textPrimary, marginBottom: '6px', fontSize: '0.95rem' }}>
-                      ▸ {log}
-                    </div>
-                  ))}
-                </Card.Body>
-              </Card>
+          {/* Battle Arena */}
+          <div style={{ background: 'linear-gradient(180deg, rgba(34,197,94,0.2) 0%, rgba(34,197,94,0.05) 100%)', borderRadius: '24px', padding: '24px', marginBottom: '16px', position: 'relative', minHeight: '380px' }}>
+
+            {/* Opponent Pokemon */}
+            <div style={{ position: 'absolute', top: '20px', right: '20px', display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ color: 'white', fontWeight: 700, fontSize: '1.1rem', textTransform: 'capitalize' }}>{aiActive?.name}</div>
+                <div className="d-flex gap-1 justify-content-end mb-2">
+                  {aiActive?.types.map(type => <span key={type} style={{ background: typeColors[type], color: 'white', padding: '2px 10px', borderRadius: '10px', fontSize: '0.65rem', fontWeight: 600 }}>{type}</span>)}
+                </div>
+                <div style={{ background: 'rgba(0,0,0,0.6)', borderRadius: '8px', padding: '8px 12px', width: '180px' }}>
+                  <div style={{ color: '#ccc', fontSize: '0.75rem', marginBottom: '4px' }}>HP {aiActive?.currentHp}/{aiActive?.maxHp}</div>
+                  <div style={{ background: '#1f2937', borderRadius: '4px', height: '8px', overflow: 'hidden' }}>
+                    <div style={{ width: `${(aiActive!.currentHp / aiActive!.maxHp) * 100}%`, height: '100%', background: getHpColor(aiActive!.currentHp, aiActive!.maxHp), transition: 'width 0.5s ease' }} />
+                  </div>
+                </div>
+              </div>
+              <div className={animations.aiDamage ? 'animate-shake' : ''}>
+                <img src={aiActive?.artwork || aiActive?.sprite} alt={aiActive?.name} style={{ width: '140px', height: '140px', objectFit: 'contain', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))' }} />
+              </div>
+            </div>
+
+            {/* Effect Text */}
+            {animations.effectText && (
+              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10 }}>
+                <span style={{ color: animations.effectText.includes('Super') ? '#EF4444' : '#94A3B8', fontSize: '1.5rem', fontWeight: 800, textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>{animations.effectText}</span>
+              </div>
+            )}
+
+            {/* Player Pokemon */}
+            <div style={{ position: 'absolute', bottom: '20px', left: '20px', display: 'flex', alignItems: 'flex-end', gap: '16px' }}>
+              <div className={animations.playerDamage ? 'animate-shake' : ''}>
+                <img src={playerActive?.artwork || playerActive?.sprite} alt={playerActive?.name} style={{ width: '160px', height: '160px', objectFit: 'contain', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))' }} />
+              </div>
+              <div>
+                <div style={{ color: 'white', fontWeight: 700, fontSize: '1.25rem', textTransform: 'capitalize' }}>{playerActive?.name}</div>
+                <div className="d-flex gap-1 mb-2">
+                  {playerActive?.types.map(type => <span key={type} style={{ background: typeColors[type], color: 'white', padding: '3px 12px', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 600 }}>{type}</span>)}
+                </div>
+                <div style={{ background: 'rgba(0,0,0,0.6)', borderRadius: '8px', padding: '10px 14px', width: '200px' }}>
+                  <div style={{ color: '#ccc', fontSize: '0.8rem', marginBottom: '4px' }}>HP {playerActive?.currentHp}/{playerActive?.maxHp}</div>
+                  <div style={{ background: '#1f2937', borderRadius: '4px', height: '10px', overflow: 'hidden' }}>
+                    <div style={{ width: `${(playerActive!.currentHp / playerActive!.maxHp) * 100}%`, height: '100%', background: getHpColor(playerActive!.currentHp, playerActive!.maxHp), transition: 'width 0.5s ease' }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Team Pokeballs */}
+            <div style={{ position: 'absolute', bottom: '20px', right: '20px' }}>
+              <div className="d-flex gap-1 justify-content-end mb-1">
+                {battleState.aiTeam.selectedForBattle.map((p, i) => (
+                  <div key={i} style={{ width: '20px', height: '20px', borderRadius: '50%', background: p.isFainted ? '#374151' : p.isActive ? '#EF4444' : '#F97316' }} />
+                ))}
+              </div>
+            </div>
+            <div style={{ position: 'absolute', top: '20px', left: '20px' }}>
+              <div className="d-flex gap-1">
+                {battleState.playerTeam.selectedForBattle.map((p, i) => (
+                  <div key={i} style={{ width: '20px', height: '20px', borderRadius: '50%', background: p.isFainted ? '#374151' : p.isActive ? '#3B82F6' : '#22C55E' }} />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Controls */}
+          <Row className="g-3">
+            {/* Move Buttons */}
+            <Col md={8}>
+              <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '16px', padding: '16px' }}>
+                <div style={{ color: '#94A3B8', fontSize: '0.85rem', marginBottom: '12px' }}>What will {playerActive?.name} do?</div>
+                <Row xs={2} className="g-2">
+                  {playerActive?.selectedMoves.map((move, index) => {
+                    const hasSTAB = playerActive.types.includes(move.type);
+                    return (
+                      <Col key={index}>
+                        <Button onClick={() => handleMoveSelect(index)} disabled={isProcessing} style={{ background: typeColors[move.type], border: 'none', width: '100%', padding: '14px 12px', textAlign: 'left', opacity: isProcessing ? 0.6 : 1 }} className="h-100">
+                          <div style={{ fontWeight: 700, marginBottom: '2px' }}>{move.name}</div>
+                          <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>
+                            {move.category === 'physical' ? '⚔️' : '✨'} {move.power || '-'} PWR | {move.accuracy}% ACC{hasSTAB && ' | STAB'}
+                          </div>
+                        </Button>
+                      </Col>
+                    );
+                  })}
+                </Row>
+              </div>
             </Col>
 
-            <Col md={6}>
-              <div className="d-grid gap-3">
-                <Button
-                  size="lg"
-                  disabled={isProcessing}
-                  onClick={() => setShowMoveSelect(true)}
-                  style={{
-                    background: 'linear-gradient(135deg, #ff4444, #cc0000)',
-                    border: 'none',
-                    padding: '20px',
-                    fontSize: '1.2rem',
-                    fontWeight: 700,
-                  }}
-                >
-                  <Swords size={24} className="me-2" />
-                  FIGHT
+            {/* Side Panel */}
+            <Col md={4}>
+              <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '16px', padding: '16px', height: '100%' }}>
+                <Button variant="outline-light" className="w-100 mb-3" onClick={() => setShowSwitchModal(true)} disabled={isProcessing}>
+                  <RefreshCw size={16} className="me-2" />Switch
                 </Button>
-
-                <Row className="g-3">
-                  <Col>
-                    <Button
-                      size="lg"
-                      disabled
-                      variant="success"
-                      className="w-100"
-                      style={{ padding: '15px', fontSize: '1.1rem', fontWeight: 600 }}
-                    >
-                      <Package size={20} className="me-2" />
-                      ITEMS ({battleState.playerTeam.items.length})
-                    </Button>
-                  </Col>
-                  <Col>
-                    <Button
-                      size="lg"
-                      disabled
-                      variant="info"
-                      className="w-100"
-                      style={{ padding: '15px', fontSize: '1.1rem', fontWeight: 600 }}
-                    >
-                      <ArrowLeftRight size={20} className="me-2" />
-                      SWITCH
-                    </Button>
-                  </Col>
-                </Row>
-
-                <div className="text-center mt-2" style={{ color: theme.colors.textSecondary }}>
-                  <small>
-                    Team: {battleState.playerTeam.selectedForBattle.filter(p => !p.isFainted).length}/4 |
-                    Opponent: {battleState.aiTeam.selectedForBattle.filter(p => !p.isFainted).length}/4
-                  </small>
+                <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '10px', maxHeight: '120px', overflowY: 'auto' }}>
+                  {battleLog.slice(-4).map((log, i) => (
+                    <div key={i} style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', marginBottom: '4px' }}>{log}</div>
+                  ))}
                 </div>
               </div>
             </Col>
           </Row>
         </Container>
 
-        {/* Move Selection Modal with Type Effectiveness */}
-        <Modal show={showMoveSelect} onHide={() => setShowMoveSelect(false)} centered size="lg">
-          <Modal.Header closeButton style={{ background: theme.colors.bgCard }}>
-            <Modal.Title style={{ color: theme.colors.textPrimary }}>
-              Select Move - {playerActive?.name}
-            </Modal.Title>
+        {/* Switch Modal */}
+        <Modal show={showSwitchModal} onHide={() => setShowSwitchModal(false)} centered>
+          <Modal.Header closeButton style={{ background: theme.colors.bgCard, borderBottom: `1px solid ${theme.colors.border}` }}>
+            <Modal.Title style={{ color: theme.colors.textPrimary }}>Switch Pokemon</Modal.Title>
           </Modal.Header>
-          <Modal.Body style={{ background: theme.colors.bgCard }}>
-            <div className="d-grid gap-3">
-              {playerActive?.selectedMoves.map((move, index) => {
-                const effectiveness = getEffectivenessMultiplier(move.type, aiActive?.types || []);
-                let effectBadge = null;
-
-                if (effectiveness >= 2) {
-                  effectBadge = <Badge className="effectiveness-badge effectiveness-super">SUPER EFFECTIVE!</Badge>;
-                } else if (effectiveness === 0) {
-                  effectBadge = <Badge className="effectiveness-badge effectiveness-immune">NO EFFECT</Badge>;
-                } else if (effectiveness < 1) {
-                  effectBadge = <Badge className="effectiveness-badge effectiveness-not">Not Very Effective</Badge>;
-                } else {
-                  effectBadge = <Badge className="effectiveness-badge effectiveness-normal">NORMAL</Badge>;
-                }
-
-                const hasSTAB = playerActive.types.includes(move.type);
-
-                return (
-                  <Button
-                    key={index}
-                    onClick={() => handleMoveSelect(index)}
-                    style={{
-                      background: `linear-gradient(135deg, ${typeColors[move.type]}, ${typeColors[move.type]}CC)`,
-                      border: 'none',
-                      padding: '20px',
-                      textAlign: 'left',
-                    }}
-                    className="card-hover"
-                  >
-                    <div className="d-flex justify-content-between align-items-center">
-                      <div>
-                        <strong style={{ fontSize: '1.2rem' }}>{move.name}</strong>
-                        {hasSTAB && <Badge bg="warning" text="dark" className="ms-2">STAB 1.5x</Badge>}
-                        {effectBadge}
-                        <br />
-                        <small>
-                          {move.category === 'physical' ? '⚔️ Physical' : '✨ Special'} |
-                          Power: {move.power || '-'} |
-                          Accuracy: {move.accuracy || '-'}%
-                        </small>
-                      </div>
-                      <Badge bg="dark" style={{ fontSize: '1rem', padding: '8px 12px' }}>
-                        {move.type.toUpperCase()}
-                      </Badge>
-                    </div>
-                  </Button>
-                );
-              })}
-            </div>
+          <Modal.Body style={{ background: theme.colors.bgPrimary }}>
+            <Row xs={2} className="g-2">
+              {battleState.playerTeam.selectedForBattle.map((p, i) => (
+                <Col key={i}>
+                  <Card onClick={() => !p.isActive && !p.isFainted && handleSwitch(i)} style={{ background: p.isActive || p.isFainted ? theme.colors.bgHover : theme.colors.bgCard, border: `2px solid ${p.isActive ? theme.colors.primary : theme.colors.border}`, cursor: p.isActive || p.isFainted ? 'not-allowed' : 'pointer', opacity: p.isFainted ? 0.4 : 1 }} className="p-2 text-center">
+                    <img src={p.artwork || p.sprite} alt={p.name} style={{ width: '60px', height: '60px', objectFit: 'contain' }} />
+                    <div style={{ color: theme.colors.textPrimary, fontWeight: 600, textTransform: 'capitalize', fontSize: '0.85rem' }}>{p.name}</div>
+                    <div style={{ color: theme.colors.textSecondary, fontSize: '0.75rem' }}>{p.currentHp}/{p.maxHp} HP</div>
+                    {p.isActive && <Badge bg="primary" className="mt-1">Active</Badge>}
+                    {p.isFainted && <Badge bg="danger" className="mt-1">Fainted</Badge>}
+                  </Card>
+                </Col>
+              ))}
+            </Row>
           </Modal.Body>
         </Modal>
-
-        {/* Items & Switch modals (same as before but styled) */}
-        {/* ... other modals ... */}
       </div>
     );
   }
 
-  // Victory/Defeat Screen
+  // END SCREEN
   if (gameState === 'ended' && battleState) {
     const playerWon = battleState.winner === 'player';
-
     return (
-      <div
-        className="d-flex align-items-center justify-content-center"
-        style={{
-          background: `linear-gradient(135deg, ${playerWon ? '#4CAF50' : '#F44336'}, ${theme.colors.bgPrimary})`,
-          minHeight: '100vh',
-        }}
-      >
-        <Card
-          className="text-center p-5 bounce-in"
-          style={{
-            background: theme.colors.bgCard,
-            border: `4px solid ${playerWon ? '#4CAF50' : '#F44336'}`,
-            borderRadius: '24px',
-            maxWidth: '500px',
-          }}
-        >
-          <h1 style={{ fontSize: '4rem', marginBottom: '20px' }}>
-            {playerWon ? '🏆' : '💀'}
-          </h1>
-          <h2 style={{ color: theme.colors.textPrimary, fontWeight: 900, fontSize: '2.5rem' }}>
-            {playerWon ? 'VICTORY!' : 'DEFEAT!'}
-          </h2>
-          <p style={{ color: theme.colors.textSecondary, fontSize: '1.2rem', marginTop: '16px' }}>
-            {playerWon
-              ? 'You are a Pokemon Champion!'
-              : 'Better luck next time, Trainer!'}
-          </p>
-
-          <Button
-            size="lg"
-            onClick={() => {
-              setGameState('menu');
-              setBattleState(null);
-              setSelectedForBattle([]);
-            }}
-            style={{
-              background: theme.gradients.primary,
-              border: 'none',
-              padding: '15px 40px',
-              fontSize: '1.2rem',
-              fontWeight: 700,
-              marginTop: '24px',
-            }}
-          >
-            NEW BATTLE
-          </Button>
+      <div style={{ background: `linear-gradient(180deg, ${playerWon ? '#166534' : '#991B1B'} 0%, ${theme.colors.bgPrimary} 100%)`, minHeight: '100vh' }} className="d-flex align-items-center justify-content-center p-4">
+        <Card style={{ background: theme.colors.bgCard, borderRadius: '24px', maxWidth: '400px', width: '100%', border: `4px solid ${playerWon ? '#22C55E' : '#EF4444'}` }} className="p-5 text-center">
+          <div style={{ fontSize: '5rem', marginBottom: '16px' }}>{playerWon ? '🏆' : '💀'}</div>
+          <h1 style={{ color: theme.colors.textPrimary, fontWeight: 800, marginBottom: '8px' }}>{playerWon ? 'Victory!' : 'Defeat'}</h1>
+          <p style={{ color: theme.colors.textSecondary, marginBottom: '24px' }}>{playerWon ? 'You are a Pokemon Champion!' : 'Better luck next time!'}</p>
+          <Button size="lg" onClick={() => { setGameState('menu'); setBattleState(null); setSelectedForBattle([]); }} style={{ background: theme.gradients.primary, border: 'none', fontWeight: 700 }}>Play Again</Button>
         </Card>
       </div>
     );

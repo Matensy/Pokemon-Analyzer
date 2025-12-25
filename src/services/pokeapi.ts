@@ -5,6 +5,7 @@ const API_BASE = 'https://pokeapi.co/api/v2';
 
 // Cache for optimization
 const cache = new Map<string, any>();
+const pokemonBasicCache = new Map<number, Pokemon>();
 
 // Helper to get from cache or fetch
 async function fetchWithCache<T>(url: string): Promise<T> {
@@ -37,7 +38,6 @@ function calculateTypeEffectiveness(types: PokemonType[]): TypeEffectiveness {
     bug: 1, rock: 1, ghost: 1, dragon: 1, dark: 1, steel: 1, fairy: 1
   };
 
-  // Type chart
   const typeChart: Record<PokemonType, { weak: PokemonType[], resist: PokemonType[], immune: PokemonType[] }> = {
     normal: { weak: ['fighting'], resist: [], immune: ['ghost'] },
     fire: { weak: ['water', 'ground', 'rock'], resist: ['fire', 'grass', 'ice', 'bug', 'steel', 'fairy'], immune: [] },
@@ -59,7 +59,6 @@ function calculateTypeEffectiveness(types: PokemonType[]): TypeEffectiveness {
     fairy: { weak: ['poison', 'steel'], resist: ['fighting', 'bug', 'dark'], immune: ['dragon'] }
   };
 
-  // Calculate combined effectiveness
   types.forEach(type => {
     const typeData = typeChart[type];
     typeData.weak.forEach(weakType => effectiveness[weakType] *= 2);
@@ -67,12 +66,7 @@ function calculateTypeEffectiveness(types: PokemonType[]): TypeEffectiveness {
     typeData.immune.forEach(immuneType => effectiveness[immuneType] = 0);
   });
 
-  const result: TypeEffectiveness = {
-    immune: [],
-    weakTo: [],
-    resistantTo: [],
-    doubleWeakTo: []
-  };
+  const result: TypeEffectiveness = { immune: [], weakTo: [], resistantTo: [], doubleWeakTo: [] };
 
   (Object.keys(effectiveness) as PokemonType[]).forEach(type => {
     const value = effectiveness[type];
@@ -83,6 +77,85 @@ function calculateTypeEffectiveness(types: PokemonType[]): TypeEffectiveness {
   });
 
   return result;
+}
+
+// FAST: Fetch basic Pokemon data (no moves, minimal API calls)
+export async function fetchPokemonBasic(id: number): Promise<Pokemon> {
+  if (pokemonBasicCache.has(id)) {
+    return pokemonBasicCache.get(id)!;
+  }
+
+  try {
+    const data = await fetchWithCache<any>(`${API_BASE}/pokemon/${id}`);
+    const types: PokemonType[] = data.types.map((t: any) => t.type.name);
+
+    const stats: PokemonStats = {
+      hp: data.stats[0].base_stat,
+      attack: data.stats[1].base_stat,
+      defense: data.stats[2].base_stat,
+      specialAttack: data.stats[3].base_stat,
+      specialDefense: data.stats[4].base_stat,
+      speed: data.stats[5].base_stat,
+      total: data.stats.reduce((sum: number, stat: any) => sum + stat.base_stat, 0)
+    };
+
+    // Basic abilities without descriptions
+    const abilities: PokemonAbility[] = data.abilities.map((a: any) => ({
+      name: a.ability.name,
+      isHidden: a.is_hidden,
+      description: ''
+    }));
+
+    // Basic moves from data (no API calls)
+    const moves: Move[] = data.moves.slice(0, 30).map((m: any) => ({
+      name: m.move.name,
+      type: 'normal' as PokemonType,
+      category: 'physical' as const,
+      power: null,
+      accuracy: null,
+      pp: 20,
+      priority: 0,
+      description: '',
+      learnMethod: 'level-up' as const,
+      level: m.version_group_details[0]?.level_learned_at || 1
+    }));
+
+    const pokemon: Pokemon = {
+      id: data.id,
+      name: data.name,
+      types,
+      stats,
+      abilities,
+      generation: getGeneration(data.id),
+      sprite: data.sprites.front_default,
+      spriteShiny: data.sprites.front_shiny,
+      artwork: data.sprites.other['official-artwork'].front_default,
+      height: data.height,
+      weight: data.weight,
+      moves,
+      recommendedMovesets: [],
+      typeEffectiveness: calculateTypeEffectiveness(types)
+    };
+
+    pokemonBasicCache.set(id, pokemon);
+    return pokemon;
+  } catch (error) {
+    console.error(`Error fetching Pokemon ${id}:`, error);
+    throw error;
+  }
+}
+
+// FAST: Fetch multiple Pokemon in parallel batches
+export async function fetchPokemonBatch(ids: number[], batchSize: number = 10): Promise<Pokemon[]> {
+  const results: Pokemon[] = [];
+
+  for (let i = 0; i < ids.length; i += batchSize) {
+    const batch = ids.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map(id => fetchPokemonBasic(id).catch(() => null)));
+    results.push(...batchResults.filter((p): p is Pokemon => p !== null));
+  }
+
+  return results;
 }
 
 // Fetch a single Pokemon
