@@ -6,6 +6,9 @@ export interface SpriteOptions {
   shiny?: boolean;
   back?: boolean;
   female?: boolean;
+  mega?: boolean;
+  dynamax?: boolean;
+  gmax?: boolean;
 }
 
 // Sprite sources
@@ -48,12 +51,109 @@ function formatPokemonName(name: string): string {
     .replace(/:/g, '');
 }
 
+// Pokemon with Mega Evolutions (name format for Showdown)
+const MEGA_FORMS: Record<string, string> = {
+  'charizard': 'charizard-mega-x', // Default to Mega X
+  'charizard-x': 'charizard-mega-x',
+  'charizard-y': 'charizard-mega-y',
+  'mewtwo': 'mewtwo-mega-y', // Default to Mega Y
+  'mewtwo-x': 'mewtwo-mega-x',
+  'mewtwo-y': 'mewtwo-mega-y',
+  'venusaur': 'venusaur-mega',
+  'blastoise': 'blastoise-mega',
+  'alakazam': 'alakazam-mega',
+  'gengar': 'gengar-mega',
+  'kangaskhan': 'kangaskhan-mega',
+  'pinsir': 'pinsir-mega',
+  'gyarados': 'gyarados-mega',
+  'aerodactyl': 'aerodactyl-mega',
+  'ampharos': 'ampharos-mega',
+  'scizor': 'scizor-mega',
+  'heracross': 'heracross-mega',
+  'houndoom': 'houndoom-mega',
+  'tyranitar': 'tyranitar-mega',
+  'blaziken': 'blaziken-mega',
+  'gardevoir': 'gardevoir-mega',
+  'mawile': 'mawile-mega',
+  'aggron': 'aggron-mega',
+  'medicham': 'medicham-mega',
+  'manectric': 'manectric-mega',
+  'banette': 'banette-mega',
+  'absol': 'absol-mega',
+  'garchomp': 'garchomp-mega',
+  'lucario': 'lucario-mega',
+  'abomasnow': 'abomasnow-mega',
+  'gallade': 'gallade-mega',
+  'metagross': 'metagross-mega',
+  'latias': 'latias-mega',
+  'latios': 'latios-mega',
+  'rayquaza': 'rayquaza-mega',
+  'lopunny': 'lopunny-mega',
+  'salamence': 'salamence-mega',
+  'beedrill': 'beedrill-mega',
+  'pidgeot': 'pidgeot-mega',
+  'slowbro': 'slowbro-mega',
+  'steelix': 'steelix-mega',
+  'sceptile': 'sceptile-mega',
+  'swampert': 'swampert-mega',
+  'sableye': 'sableye-mega',
+  'sharpedo': 'sharpedo-mega',
+  'camerupt': 'camerupt-mega',
+  'altaria': 'altaria-mega',
+  'glalie': 'glalie-mega',
+  'audino': 'audino-mega',
+  'diancie': 'diancie-mega',
+};
+
+// Gigantamax forms
+const GMAX_FORMS: Record<string, string> = {
+  'charizard': 'charizard-gmax',
+  'pikachu': 'pikachu-gmax',
+  'meowth': 'meowth-gmax',
+  'eevee': 'eevee-gmax',
+  'snorlax': 'snorlax-gmax',
+  'butterfree': 'butterfree-gmax',
+  'corviknight': 'corviknight-gmax',
+  'drednaw': 'drednaw-gmax',
+  'sandaconda': 'sandaconda-gmax',
+  'centiskorch': 'centiskorch-gmax',
+  'hatterene': 'hatterene-gmax',
+  'grimmsnarl': 'grimmsnarl-gmax',
+  'alcremie': 'alcremie-gmax',
+  'copperajah': 'copperajah-gmax',
+  'duraludon': 'duraludon-gmax',
+  'gengar': 'gengar-gmax',
+  'machamp': 'machamp-gmax',
+  'lapras': 'lapras-gmax',
+  'kingler': 'kingler-gmax',
+  'garbodor': 'garbodor-gmax',
+  'coalossal': 'coalossal-gmax',
+  'flapple': 'flapple-gmax',
+  'appletun': 'appletun-gmax',
+  'orbeetle': 'orbeetle-gmax',
+  'toxtricity': 'toxtricity-gmax',
+  'melmetal': 'melmetal-gmax',
+  'rillaboom': 'rillaboom-gmax',
+  'cinderace': 'cinderace-gmax',
+  'inteleon': 'inteleon-gmax',
+  'urshifu': 'urshifu-gmax',
+  'venusaur': 'venusaur-gmax',
+  'blastoise': 'blastoise-gmax',
+};
+
 // Get animated sprite URL (Showdown format)
 export function getAnimatedSprite(nameOrId: string | number, options: SpriteOptions = {}): string {
-  const { shiny = false, back = false } = options;
-  const name = typeof nameOrId === 'number'
+  const { shiny = false, back = false, mega = false, gmax = false } = options;
+  let name = typeof nameOrId === 'number'
     ? getPokemonNameById(nameOrId)
     : formatPokemonName(nameOrId);
+
+  // Apply form transformations
+  if (mega && MEGA_FORMS[name]) {
+    name = MEGA_FORMS[name];
+  } else if (gmax && GMAX_FORMS[name]) {
+    name = GMAX_FORMS[name];
+  }
 
   let folder = SPRITE_SOURCES.showdown.base;
   if (shiny && back) folder = SPRITE_SOURCES.showdown.backShiny;
@@ -61,6 +161,32 @@ export function getAnimatedSprite(nameOrId: string | number, options: SpriteOpti
   else if (back) folder = SPRITE_SOURCES.showdown.back;
 
   return `${folder}/${name}.gif`;
+}
+
+// Get battle sprite with all transformations
+export function getBattleSprite(
+  name: string,
+  options: {
+    isMega?: boolean;
+    isDynamaxed?: boolean;
+    isGmax?: boolean;
+    isShiny?: boolean;
+  } = {}
+): string {
+  const { isMega = false, isGmax = false, isShiny = false } = options;
+
+  // G-Max takes priority over regular Dynamax
+  if (isGmax) {
+    return getAnimatedSprite(name, { shiny: isShiny, gmax: true });
+  }
+
+  // Mega Evolution
+  if (isMega) {
+    return getAnimatedSprite(name, { shiny: isShiny, mega: true });
+  }
+
+  // Regular sprite (Dynamax is just size scaling in CSS, no sprite change)
+  return getAnimatedSprite(name, { shiny: isShiny });
 }
 
 // Get Gen 5 style animated sprite

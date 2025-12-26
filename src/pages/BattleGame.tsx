@@ -8,6 +8,8 @@ import { Pokemon, Move, PokemonType } from '../types/pokemon';
 import { generateAITeam } from '../services/aiTeamGenerator';
 import { getAIAction } from '../services/battleAI';
 import { calculateDamage, applyDamage, processEndOfTurn, checkBattleEnd, getSpeedOrder } from '../services/battleEngine';
+import { getSignatureMoves } from '../services/movesetService';
+import { getBattleSprite } from '../utils/sprites';
 import { STARTER_ITEMS } from '../data/items';
 import { typeColors } from '../styles/themes';
 import '../styles/battle-animations.css';
@@ -94,17 +96,104 @@ export default function BattleGame() {
 
   const autoSelectMoves = () => {
     const pokemon = teamWithMovesets[currentMovesetIndex];
+
+    // Check for signature moves FIRST
+    const signatureMoveNames = getSignatureMoves(pokemon.name);
+
+    if (signatureMoveNames && signatureMoveNames.length >= 4) {
+      // Find moves that match signature move names
+      const signatureMoves: Move[] = [];
+
+      for (const sigName of signatureMoveNames) {
+        // Try to find exact match or create a move object
+        const found = pokemon.moves.find(m =>
+          m.name.toLowerCase().replace(/ /g, '-') === sigName.toLowerCase() ||
+          m.name.toLowerCase() === sigName.toLowerCase().replace(/-/g, ' ')
+        );
+
+        if (found) {
+          signatureMoves.push(found);
+        } else {
+          // Create a placeholder move with estimated stats
+          const moveType = getMoveTypeFromName(sigName, pokemon.types);
+          signatureMoves.push({
+            name: sigName.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+            type: moveType,
+            category: isSpecialMove(sigName) ? 'special' : 'physical',
+            power: getEstimatedPower(sigName),
+            accuracy: 100,
+            pp: 10,
+            priority: 0,
+            learnMethod: 'level-up',
+            description: `Signature move`
+          });
+        }
+      }
+
+      setSelectedMoves(signatureMoves.slice(0, 4));
+      return;
+    }
+
+    // Fallback to best attacking moves
     const attackingMoves = pokemon.moves.filter(m => m.power && m.power > 0);
-    const bestMoves = attackingMoves
-      .sort((a, b) => (b.power || 0) - (a.power || 0))
-      .slice(0, 4);
+    const stabMoves = attackingMoves.filter(m => pokemon.types.includes(m.type));
+    const coverageMoves = attackingMoves.filter(m => !pokemon.types.includes(m.type));
+
+    // Prioritize STAB moves, then coverage
+    const sortedStab = stabMoves.sort((a, b) => (b.power || 0) - (a.power || 0));
+    const sortedCoverage = coverageMoves.sort((a, b) => (b.power || 0) - (a.power || 0));
+
+    const bestMoves = [...sortedStab.slice(0, 2), ...sortedCoverage.slice(0, 2)];
 
     if (bestMoves.length >= 4) {
-      setSelectedMoves(bestMoves);
+      setSelectedMoves(bestMoves.slice(0, 4));
     } else {
-      const remaining = pokemon.moves.filter(m => !bestMoves.includes(m));
+      const remaining = attackingMoves.filter(m => !bestMoves.includes(m));
       setSelectedMoves([...bestMoves, ...remaining.slice(0, 4 - bestMoves.length)]);
     }
+  };
+
+  // Helper functions for move creation
+  const getMoveTypeFromName = (moveName: string, pokemonTypes: PokemonType[]): PokemonType => {
+    const typeKeywords: Record<string, PokemonType> = {
+      'fire': 'fire', 'flame': 'fire', 'blaze': 'fire', 'burn': 'fire', 'flare': 'fire',
+      'water': 'water', 'hydro': 'water', 'aqua': 'water', 'surf': 'water', 'rain': 'water',
+      'thunder': 'electric', 'volt': 'electric', 'electric': 'electric', 'bolt': 'electric', 'plasma': 'electric',
+      'grass': 'grass', 'leaf': 'grass', 'solar': 'grass', 'seed': 'grass', 'vine': 'grass',
+      'ice': 'ice', 'freeze': 'ice', 'blizzard': 'ice', 'glacial': 'ice', 'frost': 'ice',
+      'psychic': 'psychic', 'psych': 'psychic', 'zen': 'psychic', 'astral': 'psychic',
+      'dragon': 'dragon', 'draco': 'dragon', 'outrage': 'dragon',
+      'dark': 'dark', 'shadow': 'dark', 'night': 'dark', 'crunch': 'dark', 'wicked': 'dark',
+      'ghost': 'ghost', 'spectral': 'ghost', 'phantom': 'ghost',
+      'fighting': 'fighting', 'combat': 'fighting', 'close': 'fighting', 'aura': 'fighting',
+      'steel': 'steel', 'iron': 'steel', 'metal': 'steel', 'flash': 'steel',
+      'fairy': 'fairy', 'moon': 'fairy', 'dazzling': 'fairy', 'play': 'fairy',
+      'ground': 'ground', 'earth': 'ground', 'earthquake': 'ground', 'mud': 'ground',
+      'rock': 'rock', 'stone': 'rock',
+      'flying': 'flying', 'aerial': 'flying', 'wing': 'flying', 'sky': 'flying',
+      'poison': 'poison', 'toxic': 'poison', 'sludge': 'poison', 'venom': 'poison',
+      'bug': 'bug', 'insect': 'bug', 'leech': 'bug',
+    };
+
+    const lowerName = moveName.toLowerCase();
+    for (const [keyword, type] of Object.entries(typeKeywords)) {
+      if (lowerName.includes(keyword)) return type;
+    }
+    return pokemonTypes[0] || 'normal';
+  };
+
+  const isSpecialMove = (moveName: string): boolean => {
+    const specialKeywords = ['beam', 'pulse', 'blast', 'wave', 'psychic', 'flamethrower', 'thunderbolt', 'hydro', 'energy', 'shadow-ball', 'moonblast', 'draco-meteor', 'focus-blast'];
+    return specialKeywords.some(k => moveName.toLowerCase().includes(k));
+  };
+
+  const getEstimatedPower = (moveName: string): number => {
+    const highPowerMoves = ['v-create', 'explosion', 'blue-flare', 'bolt-strike', 'glacial-lance', 'astral-barrage', 'dragon-ascent', 'precipice-blades', 'origin-pulse'];
+    const midPowerMoves = ['sacred-fire', 'aeroblast', 'spacial-rend', 'roar-of-time', 'shadow-force', 'judgment'];
+
+    if (highPowerMoves.includes(moveName.toLowerCase())) return 180;
+    if (midPowerMoves.includes(moveName.toLowerCase())) return 120;
+    return 100;
   };
 
   const initializeBattle = async (playerPokemon: Pokemon[]) => {
@@ -612,7 +701,9 @@ export default function BattleGame() {
             <div style={{ position: 'absolute', top: '20px', right: '20px', display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
               <div style={{ textAlign: 'right' }}>
                 <div className="d-flex align-items-center gap-2 justify-content-end">
-                  <div style={{ color: 'white', fontWeight: 700, fontSize: '1.1rem', textTransform: 'capitalize' }}>{aiActive?.name}</div>
+                  <div style={{ color: 'white', fontWeight: 700, fontSize: '1.1rem', textTransform: 'capitalize' }}>
+                    {aiActive?.megaState.isMega ? `Mega ${aiActive?.name}` : aiActive?.name}
+                  </div>
                   {aiActive?.megaState.isMega && <Badge bg="danger">MEGA</Badge>}
                   {aiActive?.dynamaxState.isDynamaxed && <Badge style={{ background: '#EC4899' }}>DMAX</Badge>}
                   {aiActive?.teraState.isTerastallized && <Badge style={{ background: typeColors[aiActive.teraState.teraType!] }}>TERA</Badge>}
@@ -627,8 +718,24 @@ export default function BattleGame() {
                   </div>
                 </div>
               </div>
-              <div className={animations.aiDamage ? 'animate-shake' : ''}>
-                <img src={aiActive?.artwork || aiActive?.sprite} alt={aiActive?.name} style={{ width: aiActive?.dynamaxState.isDynamaxed ? '180px' : '140px', height: aiActive?.dynamaxState.isDynamaxed ? '180px' : '140px', objectFit: 'contain', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))', transition: 'all 0.3s ease' }} />
+              <div className={`${animations.aiDamage ? 'animate-shake' : ''} ${aiActive?.megaState.isMega ? 'mega-glow' : ''} ${aiActive?.dynamaxState.isDynamaxed ? 'dynamax-aura' : ''} ${aiActive?.teraState.isTerastallized ? 'tera-crystal' : ''}`}>
+                <img
+                  src={getBattleSprite(aiActive?.name || '', {
+                    isMega: aiActive?.megaState.isMega,
+                    isDynamaxed: aiActive?.dynamaxState.isDynamaxed
+                  })}
+                  alt={aiActive?.name}
+                  style={{
+                    width: aiActive?.dynamaxState.isDynamaxed ? '180px' : '140px',
+                    height: aiActive?.dynamaxState.isDynamaxed ? '180px' : '140px',
+                    objectFit: 'contain',
+                    filter: `drop-shadow(0 8px 16px rgba(0,0,0,0.4)) ${aiActive?.megaState.isMega ? 'drop-shadow(0 0 20px #EC4899)' : ''} ${aiActive?.teraState.isTerastallized ? 'drop-shadow(0 0 15px ' + typeColors[aiActive.teraState.teraType!] + ')' : ''}`,
+                    transition: 'all 0.3s ease'
+                  }}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = aiActive?.artwork || aiActive?.sprite || '';
+                  }}
+                />
               </div>
             </div>
 
@@ -641,12 +748,30 @@ export default function BattleGame() {
 
             {/* Player Pokemon */}
             <div style={{ position: 'absolute', bottom: '20px', left: '20px', display: 'flex', alignItems: 'flex-end', gap: '16px' }}>
-              <div className={animations.playerDamage ? 'animate-shake' : ''}>
-                <img src={playerActive?.artwork || playerActive?.sprite} alt={playerActive?.name} style={{ width: playerActive?.dynamaxState.isDynamaxed ? '200px' : '160px', height: playerActive?.dynamaxState.isDynamaxed ? '200px' : '160px', objectFit: 'contain', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))', transition: 'all 0.3s ease' }} />
+              <div className={`${animations.playerDamage ? 'animate-shake' : ''} ${playerActive?.megaState.isMega ? 'mega-glow' : ''} ${playerActive?.dynamaxState.isDynamaxed ? 'dynamax-aura' : ''} ${playerActive?.teraState.isTerastallized ? 'tera-crystal' : ''}`}>
+                <img
+                  src={getBattleSprite(playerActive?.name || '', {
+                    isMega: playerActive?.megaState.isMega,
+                    isDynamaxed: playerActive?.dynamaxState.isDynamaxed
+                  })}
+                  alt={playerActive?.name}
+                  style={{
+                    width: playerActive?.dynamaxState.isDynamaxed ? '200px' : '160px',
+                    height: playerActive?.dynamaxState.isDynamaxed ? '200px' : '160px',
+                    objectFit: 'contain',
+                    filter: `drop-shadow(0 8px 16px rgba(0,0,0,0.4)) ${playerActive?.megaState.isMega ? 'drop-shadow(0 0 25px #EC4899)' : ''} ${playerActive?.teraState.isTerastallized ? 'drop-shadow(0 0 20px ' + typeColors[playerActive.teraState.teraType!] + ')' : ''}`,
+                    transition: 'all 0.3s ease'
+                  }}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = playerActive?.artwork || playerActive?.sprite || '';
+                  }}
+                />
               </div>
               <div>
                 <div className="d-flex align-items-center gap-2">
-                  <div style={{ color: 'white', fontWeight: 700, fontSize: '1.25rem', textTransform: 'capitalize' }}>{playerActive?.name}</div>
+                  <div style={{ color: 'white', fontWeight: 700, fontSize: '1.25rem', textTransform: 'capitalize' }}>
+                    {playerActive?.megaState.isMega ? `Mega ${playerActive?.name}` : playerActive?.name}
+                  </div>
                   {playerActive?.megaState.isMega && <Badge bg="danger">MEGA</Badge>}
                   {playerActive?.dynamaxState.isDynamaxed && <Badge style={{ background: '#EC4899' }}>DMAX {playerActive.dynamaxState.turnsRemaining}T</Badge>}
                   {playerActive?.teraState.isTerastallized && <Badge style={{ background: typeColors[playerActive.teraState.teraType!] }}>TERA</Badge>}
