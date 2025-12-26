@@ -1,16 +1,16 @@
-import { useState } from 'react';
-import { Container, Row, Col, Card, Button, Modal, Badge } from 'react-bootstrap';
-import { Swords, Shield, RefreshCw, Zap, Check, X, Sparkles, Flame, Diamond } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Container, Row, Col, Card, Button, Modal, Badge, Spinner, Alert } from 'react-bootstrap';
+import { Swords, Shield, RefreshCw, Zap, Check, X, Sparkles, Flame, Diamond, Package, AlertTriangle } from 'lucide-react';
 import { useThemeStore } from '../store/themeStore';
 import { useTeamStore } from '../store/teamStore';
-import { BattleState, BattlePokemon, BattleAction, MEGA_POKEMON, getDynamaxMove } from '../types/battle';
+import { BattleState, BattlePokemon, BattleAction, BattleItem, MEGA_POKEMON, getDynamaxMove } from '../types/battle';
 import { Pokemon, Move, PokemonType } from '../types/pokemon';
 import { generateAITeam } from '../services/aiTeamGenerator';
 import { getAIAction } from '../services/battleAI';
 import { calculateDamage, applyDamage, processEndOfTurn, checkBattleEnd, getSpeedOrder } from '../services/battleEngine';
-import { getSignatureMoves } from '../services/movesetService';
+import { getLearnableMoves, canPokemonLearnMove } from '../services/moveValidator';
 import { getBattleSprite } from '../utils/sprites';
-import { STARTER_ITEMS } from '../data/items';
+import { STARTER_ITEMS, HELD_ITEMS } from '../data/items';
 import { typeColors } from '../styles/themes';
 import '../styles/battle-animations.css';
 
@@ -18,11 +18,15 @@ export default function BattleGame() {
   const { theme } = useThemeStore();
   const { team } = useTeamStore();
 
-  const [gameState, setGameState] = useState<'menu' | 'team-select' | 'moveset-select' | 'battle' | 'ended'>('menu');
+  const [gameState, setGameState] = useState<'menu' | 'team-select' | 'item-select' | 'moveset-select' | 'battle' | 'ended'>('menu');
   const [selectedForBattle, setSelectedForBattle] = useState<number[]>([]);
   const [currentMovesetIndex, setCurrentMovesetIndex] = useState(0);
   const [teamWithMovesets, setTeamWithMovesets] = useState<Pokemon[]>([]);
   const [selectedMoves, setSelectedMoves] = useState<Move[]>([]);
+  const [selectedItems, setSelectedItems] = useState<(BattleItem | null)[]>([null, null, null, null]);
+  const [availableMoves, setAvailableMoves] = useState<Move[]>([]);
+  const [loadingMoves, setLoadingMoves] = useState(false);
+  const [invalidMoveAlert, setInvalidMoveAlert] = useState<string | null>(null);
 
   const [battleState, setBattleState] = useState<BattleState | null>(null);
   const [battleLog, setBattleLog] = useState<string[]>([]);
@@ -66,17 +70,61 @@ export default function BattleGame() {
     }
     const selected = selectedForBattle.map(i => team[i]);
     setTeamWithMovesets(selected);
+    setSelectedItems([null, null, null, null]);
+    setGameState('item-select');
+  };
+
+  const confirmItemSelection = () => {
     setCurrentMovesetIndex(0);
     setSelectedMoves([]);
+    setAvailableMoves([]);
     setGameState('moveset-select');
   };
 
-  const toggleMoveSelection = (move: Move) => {
+  // Load real moves from API when Pokemon changes
+  useEffect(() => {
+    if (gameState === 'moveset-select' && teamWithMovesets[currentMovesetIndex]) {
+      const loadMoves = async () => {
+        setLoadingMoves(true);
+        setAvailableMoves([]);
+        try {
+          const pokemon = teamWithMovesets[currentMovesetIndex];
+          const moves = await getLearnableMoves(pokemon.name);
+          setAvailableMoves(moves);
+        } catch (error) {
+          console.error('Error loading moves:', error);
+          // Fallback to Pokemon's existing moves
+          setAvailableMoves(teamWithMovesets[currentMovesetIndex].moves || []);
+        }
+        setLoadingMoves(false);
+      };
+      loadMoves();
+    }
+  }, [gameState, currentMovesetIndex, teamWithMovesets]);
+
+  const toggleMoveSelection = async (move: Move) => {
+    // Check if move is already selected
     if (selectedMoves.find(m => m.name === move.name)) {
       setSelectedMoves(selectedMoves.filter(m => m.name !== move.name));
-    } else if (selectedMoves.length < 4) {
-      setSelectedMoves([...selectedMoves, move]);
+      return;
     }
+
+    // Check if we already have 4 moves
+    if (selectedMoves.length >= 4) {
+      return;
+    }
+
+    // Validate if Pokemon can learn this move
+    const pokemon = teamWithMovesets[currentMovesetIndex];
+    const canLearn = await canPokemonLearnMove(pokemon.name, move.name);
+
+    if (!canLearn) {
+      setInvalidMoveAlert(`${pokemon.name.toUpperCase()} NÃO APRENDE ${move.name.toUpperCase()}!`);
+      setTimeout(() => setInvalidMoveAlert(null), 3000);
+      return;
+    }
+
+    setSelectedMoves([...selectedMoves, move]);
   };
 
   const confirmMoveset = () => {
@@ -95,105 +143,79 @@ export default function BattleGame() {
   };
 
   const autoSelectMoves = () => {
+    if (availableMoves.length === 0) return;
+
     const pokemon = teamWithMovesets[currentMovesetIndex];
+    const isPhysical = pokemon.stats.attack > pokemon.stats.specialAttack;
+    const preferredCategory = isPhysical ? 'physical' : 'special';
 
-    // Check for signature moves FIRST
-    const signatureMoveNames = getSignatureMoves(pokemon.name);
+    // Filter moves by category
+    const attackingMoves = availableMoves.filter(m => m.power && m.power > 0);
 
-    if (signatureMoveNames && signatureMoveNames.length >= 4) {
-      // Find moves that match signature move names
-      const signatureMoves: Move[] = [];
+    // STAB moves (Same Type Attack Bonus)
+    const stabMoves = attackingMoves.filter(m =>
+      pokemon.types.includes(m.type) && m.category === preferredCategory
+    ).sort((a, b) => (b.power || 0) - (a.power || 0));
 
-      for (const sigName of signatureMoveNames) {
-        // Try to find exact match or create a move object
-        const found = pokemon.moves.find(m =>
-          m.name.toLowerCase().replace(/ /g, '-') === sigName.toLowerCase() ||
-          m.name.toLowerCase() === sigName.toLowerCase().replace(/-/g, ' ')
-        );
+    // Coverage moves (different types)
+    const coverageMoves = attackingMoves.filter(m =>
+      !pokemon.types.includes(m.type) && m.category === preferredCategory
+    ).sort((a, b) => (b.power || 0) - (a.power || 0));
 
-        if (found) {
-          signatureMoves.push(found);
-        } else {
-          // Create a placeholder move with estimated stats
-          const moveType = getMoveTypeFromName(sigName, pokemon.types);
-          signatureMoves.push({
-            name: sigName.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-            type: moveType,
-            category: isSpecialMove(sigName) ? 'special' : 'physical',
-            power: getEstimatedPower(sigName),
-            accuracy: 100,
-            pp: 10,
-            priority: 0,
-            learnMethod: 'level-up',
-            description: `Signature move`
-          });
-        }
+    // Setup moves
+    const setupMoves = availableMoves.filter(m =>
+      m.category === 'status' &&
+      ['swords-dance', 'dragon-dance', 'nasty-plot', 'calm-mind', 'quiver-dance',
+       'shell-smash', 'bulk-up', 'agility', 'rock-polish'].includes(m.name)
+    );
+
+    // Priority moves
+    const priorityMoves = attackingMoves.filter(m =>
+      m.priority && m.priority > 0
+    );
+
+    // Build the best moveset
+    const selected: Move[] = [];
+    const usedTypes = new Set<PokemonType>();
+
+    // Add 1-2 best STAB moves
+    for (const move of stabMoves) {
+      if (selected.length >= 2) break;
+      if (!usedTypes.has(move.type)) {
+        selected.push(move);
+        usedTypes.add(move.type);
       }
-
-      setSelectedMoves(signatureMoves.slice(0, 4));
-      return;
     }
 
-    // Fallback to best attacking moves
-    const attackingMoves = pokemon.moves.filter(m => m.power && m.power > 0);
-    const stabMoves = attackingMoves.filter(m => pokemon.types.includes(m.type));
-    const coverageMoves = attackingMoves.filter(m => !pokemon.types.includes(m.type));
-
-    // Prioritize STAB moves, then coverage
-    const sortedStab = stabMoves.sort((a, b) => (b.power || 0) - (a.power || 0));
-    const sortedCoverage = coverageMoves.sort((a, b) => (b.power || 0) - (a.power || 0));
-
-    const bestMoves = [...sortedStab.slice(0, 2), ...sortedCoverage.slice(0, 2)];
-
-    if (bestMoves.length >= 4) {
-      setSelectedMoves(bestMoves.slice(0, 4));
-    } else {
-      const remaining = attackingMoves.filter(m => !bestMoves.includes(m));
-      setSelectedMoves([...bestMoves, ...remaining.slice(0, 4 - bestMoves.length)]);
+    // Add 1 setup move if available
+    if (setupMoves.length > 0 && selected.length < 4) {
+      selected.push(setupMoves[0]);
     }
-  };
 
-  // Helper functions for move creation
-  const getMoveTypeFromName = (moveName: string, pokemonTypes: PokemonType[]): PokemonType => {
-    const typeKeywords: Record<string, PokemonType> = {
-      'fire': 'fire', 'flame': 'fire', 'blaze': 'fire', 'burn': 'fire', 'flare': 'fire',
-      'water': 'water', 'hydro': 'water', 'aqua': 'water', 'surf': 'water', 'rain': 'water',
-      'thunder': 'electric', 'volt': 'electric', 'electric': 'electric', 'bolt': 'electric', 'plasma': 'electric',
-      'grass': 'grass', 'leaf': 'grass', 'solar': 'grass', 'seed': 'grass', 'vine': 'grass',
-      'ice': 'ice', 'freeze': 'ice', 'blizzard': 'ice', 'glacial': 'ice', 'frost': 'ice',
-      'psychic': 'psychic', 'psych': 'psychic', 'zen': 'psychic', 'astral': 'psychic',
-      'dragon': 'dragon', 'draco': 'dragon', 'outrage': 'dragon',
-      'dark': 'dark', 'shadow': 'dark', 'night': 'dark', 'crunch': 'dark', 'wicked': 'dark',
-      'ghost': 'ghost', 'spectral': 'ghost', 'phantom': 'ghost',
-      'fighting': 'fighting', 'combat': 'fighting', 'close': 'fighting', 'aura': 'fighting',
-      'steel': 'steel', 'iron': 'steel', 'metal': 'steel', 'flash': 'steel',
-      'fairy': 'fairy', 'moon': 'fairy', 'dazzling': 'fairy', 'play': 'fairy',
-      'ground': 'ground', 'earth': 'ground', 'earthquake': 'ground', 'mud': 'ground',
-      'rock': 'rock', 'stone': 'rock',
-      'flying': 'flying', 'aerial': 'flying', 'wing': 'flying', 'sky': 'flying',
-      'poison': 'poison', 'toxic': 'poison', 'sludge': 'poison', 'venom': 'poison',
-      'bug': 'bug', 'insect': 'bug', 'leech': 'bug',
-    };
-
-    const lowerName = moveName.toLowerCase();
-    for (const [keyword, type] of Object.entries(typeKeywords)) {
-      if (lowerName.includes(keyword)) return type;
+    // Add coverage moves
+    for (const move of coverageMoves) {
+      if (selected.length >= 4) break;
+      if (!usedTypes.has(move.type)) {
+        selected.push(move);
+        usedTypes.add(move.type);
+      }
     }
-    return pokemonTypes[0] || 'normal';
-  };
 
-  const isSpecialMove = (moveName: string): boolean => {
-    const specialKeywords = ['beam', 'pulse', 'blast', 'wave', 'psychic', 'flamethrower', 'thunderbolt', 'hydro', 'energy', 'shadow-ball', 'moonblast', 'draco-meteor', 'focus-blast'];
-    return specialKeywords.some(k => moveName.toLowerCase().includes(k));
-  };
+    // Add priority move if space
+    if (selected.length < 4 && priorityMoves.length > 0) {
+      const priority = priorityMoves.find(m => !selected.includes(m));
+      if (priority) selected.push(priority);
+    }
 
-  const getEstimatedPower = (moveName: string): number => {
-    const highPowerMoves = ['v-create', 'explosion', 'blue-flare', 'bolt-strike', 'glacial-lance', 'astral-barrage', 'dragon-ascent', 'precipice-blades', 'origin-pulse'];
-    const midPowerMoves = ['sacred-fire', 'aeroblast', 'spacial-rend', 'roar-of-time', 'shadow-force', 'judgment'];
+    // Fill remaining with best power moves
+    for (const move of attackingMoves) {
+      if (selected.length >= 4) break;
+      if (!selected.includes(move)) {
+        selected.push(move);
+      }
+    }
 
-    if (highPowerMoves.includes(moveName.toLowerCase())) return 180;
-    if (midPowerMoves.includes(moveName.toLowerCase())) return 120;
-    return 100;
+    setSelectedMoves(selected.slice(0, 4));
   };
 
   const initializeBattle = async (playerPokemon: Pokemon[]) => {
@@ -542,11 +564,86 @@ export default function BattleGame() {
     );
   }
 
+  // ITEM SELECT SCREEN
+  if (gameState === 'item-select') {
+    return (
+      <div style={{ background: theme.colors.bgPrimary, minHeight: '100vh', padding: '24px' }}>
+        <Container>
+          <h2 style={{ color: theme.colors.textPrimary, marginBottom: '8px' }}>
+            <Package size={24} className="me-2" />
+            Selecione os Held Items
+          </h2>
+          <p style={{ color: theme.colors.textSecondary, marginBottom: '24px' }}>
+            Escolha um item para cada Pokemon (opcional)
+          </p>
+
+          {teamWithMovesets.map((pokemon, pokemonIndex) => (
+            <Card key={pokemon.id} style={{ background: theme.colors.bgCard, border: `1px solid ${theme.colors.border}`, marginBottom: '16px' }} className="p-3">
+              <Row className="align-items-center">
+                <Col xs="auto">
+                  <img src={pokemon.artwork || pokemon.sprite} alt={pokemon.name} style={{ width: '60px', height: '60px', objectFit: 'contain' }} />
+                </Col>
+                <Col>
+                  <div style={{ color: theme.colors.textPrimary, fontWeight: 600, textTransform: 'capitalize' }}>{pokemon.name}</div>
+                  <div className="d-flex gap-1 mt-1">
+                    {pokemon.types.map(type => (
+                      <span key={type} style={{ background: typeColors[type], color: 'white', padding: '2px 8px', borderRadius: '6px', fontSize: '0.65rem', fontWeight: 600 }}>{type}</span>
+                    ))}
+                  </div>
+                </Col>
+                <Col xs={12} md={6}>
+                  <select
+                    value={selectedItems[pokemonIndex]?.id || ''}
+                    onChange={(e) => {
+                      const item = HELD_ITEMS.find(i => i.id === e.target.value) || null;
+                      const newItems = [...selectedItems];
+                      newItems[pokemonIndex] = item;
+                      setSelectedItems(newItems);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: `1px solid ${theme.colors.border}`,
+                      background: theme.colors.bgCard,
+                      color: theme.colors.textPrimary,
+                      fontSize: '0.9rem'
+                    }}
+                  >
+                    <option value="">Sem Item</option>
+                    {HELD_ITEMS.map(item => (
+                      <option key={item.id} value={item.id}>
+                        {item.name} - {item.effect}
+                      </option>
+                    ))}
+                  </select>
+                </Col>
+              </Row>
+              {selectedItems[pokemonIndex] && (
+                <div style={{ marginTop: '8px', padding: '8px', background: theme.colors.bgHover, borderRadius: '6px' }}>
+                  <small style={{ color: theme.colors.textSecondary }}>
+                    <strong>{selectedItems[pokemonIndex]?.name}:</strong> {selectedItems[pokemonIndex]?.effect}
+                  </small>
+                </div>
+              )}
+            </Card>
+          ))}
+
+          <div className="text-center mt-4">
+            <Button size="lg" onClick={confirmItemSelection} style={{ background: theme.gradients.primary, border: 'none', padding: '16px 48px', fontWeight: 700 }}>
+              Continuar para Movesets
+            </Button>
+          </div>
+        </Container>
+      </div>
+    );
+  }
+
   // MOVESET SELECT SCREEN
   if (gameState === 'moveset-select') {
     const currentPokemon = teamWithMovesets[currentMovesetIndex];
-    const attackingMoves = currentPokemon.moves.filter(m => m.power && m.power > 0);
-    const statusMoves = currentPokemon.moves.filter(m => !m.power || m.power === 0);
+    const attackingMoves = availableMoves.filter(m => m.power && m.power > 0);
+    const statusMoves = availableMoves.filter(m => !m.power || m.power === 0);
 
     return (
       <div style={{ background: theme.colors.bgPrimary, minHeight: '100vh', padding: '24px' }}>
@@ -557,6 +654,14 @@ export default function BattleGame() {
               <div key={i} style={{ flex: 1, height: '8px', borderRadius: '4px', background: i <= currentMovesetIndex ? theme.colors.primary : theme.colors.border }} />
             ))}
           </div>
+
+          {/* Invalid Move Alert */}
+          {invalidMoveAlert && (
+            <Alert variant="danger" className="d-flex align-items-center gap-2" style={{ marginBottom: '16px' }}>
+              <AlertTriangle size={20} />
+              <strong>{invalidMoveAlert}</strong>
+            </Alert>
+          )}
 
           {/* Pokemon Header */}
           <Card style={{ background: theme.gradients.primary, border: 'none', borderRadius: '16px', marginBottom: '24px' }} className="p-4">
@@ -569,12 +674,32 @@ export default function BattleGame() {
                 <div className="d-flex gap-2 mt-2">
                   {currentPokemon.types.map(type => <span key={type} style={{ background: 'rgba(255,255,255,0.2)', color: 'white', padding: '4px 12px', borderRadius: '12px', fontWeight: 600 }}>{type}</span>)}
                 </div>
+                {selectedItems[currentMovesetIndex] && (
+                  <div className="mt-2">
+                    <span style={{ background: 'rgba(255,255,255,0.15)', color: 'white', padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem' }}>
+                      📦 {selectedItems[currentMovesetIndex]?.name}
+                    </span>
+                  </div>
+                )}
               </Col>
               <Col xs="auto">
-                <Button variant="light" onClick={autoSelectMoves} style={{ fontWeight: 600 }}><Zap size={16} className="me-2" />Auto-Select</Button>
+                <Button variant="light" onClick={autoSelectMoves} disabled={loadingMoves} style={{ fontWeight: 600 }}>
+                  {loadingMoves ? <Spinner size="sm" className="me-2" /> : <Zap size={16} className="me-2" />}
+                  Auto-Select
+                </Button>
               </Col>
             </Row>
           </Card>
+
+          {/* Loading Indicator */}
+          {loadingMoves && (
+            <div className="text-center py-5">
+              <Spinner animation="border" style={{ color: theme.colors.primary }} />
+              <p style={{ color: theme.colors.textSecondary, marginTop: '12px' }}>
+                Carregando moves que {currentPokemon.name} pode aprender...
+              </p>
+            </div>
+          )}
 
           {/* Selected Moves */}
           <div style={{ background: theme.colors.bgCard, border: `1px solid ${theme.colors.border}`, borderRadius: '12px', padding: '16px', marginBottom: '24px' }}>
@@ -594,9 +719,9 @@ export default function BattleGame() {
           </div>
 
           {/* Attacking Moves */}
-          {attackingMoves.length > 0 && (
+          {!loadingMoves && attackingMoves.length > 0 && (
             <div className="mb-4">
-              <h5 style={{ color: theme.colors.textPrimary, marginBottom: '12px' }}><Swords size={18} className="me-2" />Attacking Moves</h5>
+              <h5 style={{ color: theme.colors.textPrimary, marginBottom: '12px' }}><Swords size={18} className="me-2" />Attacking Moves ({attackingMoves.length})</h5>
               <Row xs={1} md={2} lg={3} className="g-3">
                 {attackingMoves.map((move, index) => {
                   const isSelected = selectedMoves.find(m => m.name === move.name);
@@ -631,9 +756,9 @@ export default function BattleGame() {
           )}
 
           {/* Status Moves */}
-          {statusMoves.length > 0 && (
+          {!loadingMoves && statusMoves.length > 0 && (
             <div className="mb-4">
-              <h5 style={{ color: theme.colors.textPrimary, marginBottom: '12px' }}><Shield size={18} className="me-2" />Status Moves</h5>
+              <h5 style={{ color: theme.colors.textPrimary, marginBottom: '12px' }}><Shield size={18} className="me-2" />Status Moves ({statusMoves.length})</h5>
               <Row xs={1} md={2} lg={3} className="g-3">
                 {statusMoves.slice(0, 6).map((move, index) => {
                   const isSelected = selectedMoves.find(m => m.name === move.name);

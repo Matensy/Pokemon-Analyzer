@@ -12,6 +12,24 @@ export interface BattleItem {
   power?: number;
   description: string;
   canUseInBattle: boolean;
+  // Held item specific properties
+  statBoost?: {
+    attackMult?: number;
+    defenseMult?: number;
+    spAtkMult?: number;
+    spDefMult?: number;
+    speedMult?: number;
+  };
+  locksMove?: boolean;
+  endOfTurnHeal?: number;
+  blocksStatusMoves?: boolean;
+  requiresEvolution?: boolean;
+  poisonTypeOnly?: boolean;
+  superEffectiveBoost?: number;
+  critBoost?: boolean;
+  evasionBoost?: number;
+  drainPercent?: number;
+  groundImmune?: boolean;
 }
 
 export interface StatusCondition {

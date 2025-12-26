@@ -161,6 +161,7 @@ export const HELD_ITEMS: BattleItem[] = [
     category: 'held',
     effect: 'Boosts move power by 30% but costs 10% HP per attack',
     description: 'An item to be held by a Pokémon. It boosts the power of moves, but at the cost of some HP',
+    statBoost: { attackMult: 1.3, spAtkMult: 1.3 },
     canUseInBattle: false
   },
   {
@@ -169,6 +170,8 @@ export const HELD_ITEMS: BattleItem[] = [
     category: 'held',
     effect: 'Boosts Attack by 50% but locks into first move used',
     description: 'An item to be held by a Pokémon. It boosts Attack but allows only one move to be used',
+    statBoost: { attackMult: 1.5 },
+    locksMove: true,
     canUseInBattle: false
   },
   {
@@ -177,6 +180,8 @@ export const HELD_ITEMS: BattleItem[] = [
     category: 'held',
     effect: 'Boosts Special Attack by 50% but locks into first move used',
     description: 'An item to be held by a Pokémon. It boosts Sp. Atk but allows only one move to be used',
+    statBoost: { spAtkMult: 1.5 },
+    locksMove: true,
     canUseInBattle: false
   },
   {
@@ -185,6 +190,8 @@ export const HELD_ITEMS: BattleItem[] = [
     category: 'held',
     effect: 'Boosts Speed by 50% but locks into first move used',
     description: 'An item to be held by a Pokémon. It boosts Speed but allows only one move to be used',
+    statBoost: { speedMult: 1.5 },
+    locksMove: true,
     canUseInBattle: false
   },
   {
@@ -193,6 +200,7 @@ export const HELD_ITEMS: BattleItem[] = [
     category: 'held',
     effect: 'Restores 1/16 of max HP each turn',
     description: 'An item to be held by a Pokémon. The holder gradually regains HP during battle',
+    endOfTurnHeal: 0.0625,
     canUseInBattle: false
   },
   {
@@ -201,6 +209,8 @@ export const HELD_ITEMS: BattleItem[] = [
     category: 'held',
     effect: 'Boosts Special Defense by 50% but prevents status moves',
     description: 'An item to be held by a Pokémon. It boosts Sp. Def but prevents status moves',
+    statBoost: { spDefMult: 1.5 },
+    blocksStatusMoves: true,
     canUseInBattle: false
   },
   {
@@ -217,6 +227,113 @@ export const HELD_ITEMS: BattleItem[] = [
     category: 'held',
     effect: 'Sharply raises Attack and Sp. Atk when hit by a super effective move',
     description: 'An item to be held by a Pokémon. Attack and Sp. Atk sharply increase if hit by a super effective move',
+    canUseInBattle: false
+  },
+  {
+    id: 'rocky-helmet',
+    name: 'Rocky Helmet',
+    category: 'held',
+    effect: 'Damages attackers that make contact by 1/6 of their max HP',
+    description: 'An item to be held by a Pokémon. If the holder is hit, the attacker loses 1/6 of their HP',
+    canUseInBattle: false
+  },
+  {
+    id: 'heavy-duty-boots',
+    name: 'Heavy-Duty Boots',
+    category: 'held',
+    effect: 'Protects the holder from entry hazards',
+    description: 'Boots that prevent the effects of traps like Stealth Rock and Spikes',
+    canUseInBattle: false
+  },
+  {
+    id: 'eviolite',
+    name: 'Eviolite',
+    category: 'held',
+    effect: 'Boosts Defense and Sp. Def by 50% if holder can evolve',
+    description: 'A mysterious evolutionary lump. When held by a Pokémon that can evolve, it raises Defense and Sp. Def',
+    statBoost: { defenseMult: 1.5, spDefMult: 1.5 },
+    requiresEvolution: true,
+    canUseInBattle: false
+  },
+  {
+    id: 'black-sludge',
+    name: 'Black Sludge',
+    category: 'held',
+    effect: 'Restores HP for Poison types, damages others',
+    description: 'A sludge that restores HP for Poison types but damages other types',
+    poisonTypeOnly: true,
+    endOfTurnHeal: 0.0625,
+    canUseInBattle: false
+  },
+  {
+    id: 'expert-belt',
+    name: 'Expert Belt',
+    category: 'held',
+    effect: 'Boosts super effective moves by 20%',
+    description: 'An item to be held by a Pokémon. It boosts the power of super effective moves',
+    superEffectiveBoost: 1.2,
+    canUseInBattle: false
+  },
+  {
+    id: 'muscle-band',
+    name: 'Muscle Band',
+    category: 'held',
+    effect: 'Boosts physical moves by 10%',
+    description: 'An item to be held by a Pokémon. It boosts the power of physical moves',
+    statBoost: { attackMult: 1.1 },
+    canUseInBattle: false
+  },
+  {
+    id: 'wise-glasses',
+    name: 'Wise Glasses',
+    category: 'held',
+    effect: 'Boosts special moves by 10%',
+    description: 'An item to be held by a Pokémon. It boosts the power of special moves',
+    statBoost: { spAtkMult: 1.1 },
+    canUseInBattle: false
+  },
+  {
+    id: 'scope-lens',
+    name: 'Scope Lens',
+    category: 'held',
+    effect: 'Boosts critical hit ratio',
+    description: 'An item to be held by a Pokémon. It increases critical hit ratio',
+    critBoost: true,
+    canUseInBattle: false
+  },
+  {
+    id: 'bright-powder',
+    name: 'Bright Powder',
+    category: 'held',
+    effect: 'Lowers opponent accuracy by 10%',
+    description: 'An item to be held by a Pokémon. It reduces the accuracy of moves targeting it',
+    evasionBoost: 1.1,
+    canUseInBattle: false
+  },
+  {
+    id: 'shell-bell',
+    name: 'Shell Bell',
+    category: 'held',
+    effect: 'Restores HP equal to 1/8 of damage dealt',
+    description: 'An item to be held by a Pokémon. The holder recovers 1/8 of damage dealt',
+    drainPercent: 0.125,
+    canUseInBattle: false
+  },
+  {
+    id: 'air-balloon',
+    name: 'Air Balloon',
+    category: 'held',
+    effect: 'Grants Ground immunity until hit',
+    description: 'An item to be held by a Pokémon. It floats and grants Ground immunity until popped',
+    groundImmune: true,
+    canUseInBattle: false
+  },
+  {
+    id: 'mental-herb',
+    name: 'Mental Herb',
+    category: 'held',
+    effect: 'Cures infatuation, Taunt, Encore, Torment, Disable, and Heal Block',
+    description: 'An item to be held by a Pokémon. It cures the holder of mental-based conditions',
     canUseInBattle: false
   }
 ];
