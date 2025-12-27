@@ -1,8 +1,38 @@
 import { Pokemon, Move, PokemonType } from './pokemon';
+import { WeatherType } from '../data/weather';
 
 // Battle Types and Interfaces
 
 export type BattleFormat = '1v1' | 'vgc' | 'doubles';
+export type TerrainType = 'electric' | 'grassy' | 'misty' | 'psychic' | null;
+
+// Field Hazards state for each side
+export interface FieldHazards {
+  stealthRock: boolean;
+  spikesLayers: number; // 0-3
+  toxicSpikesLayers: number; // 0-2
+  stickyWeb: boolean;
+}
+
+// Field-wide effects
+export interface FieldState {
+  weather: WeatherType;
+  weatherTurns: number;
+  terrain: TerrainType;
+  terrainTurns: number;
+  // Screens and other side effects
+  playerSide: SideConditions;
+  aiSide: SideConditions;
+}
+
+export interface SideConditions {
+  hazards: FieldHazards;
+  reflect: number; // Turns remaining
+  lightScreen: number;
+  auroraVeil: number;
+  tailwind: number;
+  trickRoom: number; // Global but tracked here for simplicity
+}
 
 export interface BattleItem {
   id: string;
@@ -74,11 +104,22 @@ export interface BattlePokemon extends Pokemon {
   selectedMoves: Move[];
   isActive: boolean;
   isFainted: boolean;
+  // Ability system
+  activeAbility: string;
+  abilityActivated: boolean; // For one-time abilities like Flash Fire boost
   // New mechanics
   megaState: MegaState;
   dynamaxState: DynamaxState;
   teraState: TeraState;
   canMegaEvolve: boolean;
+  // VGC specific
+  isGrounded: boolean; // For terrain/hazard effects
+  hasSubstitute: boolean;
+  substituteHp: number;
+  protectCount: number; // For diminishing protect success
+  lastMoveUsed?: Move;
+  // Position in doubles (0 = left, 1 = right)
+  position: number;
 }
 
 export interface BattleTeam {
@@ -94,9 +135,9 @@ export interface BattleTeam {
 
 export interface BattleAction {
   type: 'move' | 'switch' | 'item';
-  pokemonIndex: number;
+  pokemonIndex: number; // Which of your active Pokemon (0 or 1 in doubles)
   moveIndex?: number;
-  targetIndex?: number;
+  targetIndex?: number; // Target position (0-3: 0,1 player, 2,3 opponent in doubles)
   switchToIndex?: number;
   itemId?: string;
   // Mechanic flags
@@ -104,6 +145,9 @@ export interface BattleAction {
   useDynamax?: boolean;
   useTera?: boolean;
   teraType?: PokemonType;
+  // Doubles specific
+  targetAlly?: boolean; // For moves like Helping Hand
+  spreadMove?: boolean; // For spread moves like Earthquake
 }
 
 export interface BattleTurn {
@@ -125,12 +169,17 @@ export interface BattleState {
   aiTeam: BattleTeam;
   currentTurn: number;
   battleLog: string[];
-  weather?: 'sun' | 'rain' | 'sandstorm' | 'hail' | null;
-  terrain?: 'electric' | 'grassy' | 'misty' | 'psychic' | null;
+  // Field state
+  field: FieldState;
   isPlayerTurn: boolean;
   battleEnded: boolean;
   winner?: 'player' | 'ai' | 'draw';
   format: BattleFormat;
+  // VGC Doubles specific
+  isDoubles: boolean;
+  // Audio settings
+  musicEnabled: boolean;
+  sfxEnabled: boolean;
 }
 
 export interface AIDecision {
@@ -145,6 +194,63 @@ export interface TeamSynergyScore {
   defensiveSynergy: number;
   speedTiers: number;
   roleBalance: number;
+}
+
+// ELO/Ranking System
+export interface PlayerRating {
+  id: string;
+  username: string;
+  elo: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  winStreak: number;
+  bestWinStreak: number;
+  rank: RankTier;
+  matchHistory: MatchRecord[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type RankTier =
+  | 'Poke Ball'
+  | 'Great Ball'
+  | 'Ultra Ball'
+  | 'Master Ball'
+  | 'Champion'
+  | 'Elite'
+  | 'Legend';
+
+export interface MatchRecord {
+  id: string;
+  date: Date;
+  playerTeam: string[]; // Pokemon names
+  opponentTeam: string[];
+  result: 'win' | 'loss' | 'draw';
+  eloChange: number;
+  turnsPlayed: number;
+  mvp?: string; // Pokemon that dealt most damage
+  format: BattleFormat;
+}
+
+// Damage calculation extended result
+export interface ExtendedDamageCalc {
+  damage: number;
+  minDamage: number;
+  maxDamage: number;
+  effectiveness: number;
+  isCritical: boolean;
+  description: string;
+  // Breakdown
+  basePower: number;
+  stab: boolean;
+  weatherBoost: number;
+  terrainBoost: number;
+  abilityModifier: number;
+  itemModifier: number;
+  burnPenalty: boolean;
+  screenReduction: boolean;
+  koChance: number; // 0-100%
 }
 
 // Mega Evolution Data

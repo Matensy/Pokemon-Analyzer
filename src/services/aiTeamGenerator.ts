@@ -307,7 +307,15 @@ function createBattlePokemon(pokemon: Pokemon): BattlePokemon {
     canMegaEvolve,
     megaState: { isMega: false },
     dynamaxState: { isDynamaxed: false, turnsRemaining: 0 },
-    teraState: { isTerastallized: false, teraType: null }
+    teraState: { isTerastallized: false, teraType: null },
+    // VGC specific fields
+    activeAbility: typeof pokemon.abilities?.[0] === 'string' ? pokemon.abilities[0] : pokemon.abilities?.[0]?.name || 'unknown',
+    abilityActivated: false,
+    isGrounded: !pokemon.types.includes('flying'),
+    hasSubstitute: false,
+    substituteHp: 0,
+    protectCount: 0,
+    position: 0
   };
 }
 

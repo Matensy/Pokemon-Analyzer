@@ -1,22 +1,27 @@
 import { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Modal, Badge, Spinner, Alert } from 'react-bootstrap';
-import { Swords, Shield, RefreshCw, Zap, Check, X, Sparkles, Flame, Diamond, Package, AlertTriangle } from 'lucide-react';
+import { Swords, Shield, RefreshCw, Zap, Check, X, Sparkles, Flame, Diamond, Package, AlertTriangle, Volume2, VolumeX } from 'lucide-react';
 import { useThemeStore } from '../store/themeStore';
 import { useTeamStore } from '../store/teamStore';
+import { useRankingStore } from '../store/rankingStore';
 import { BattleState, BattlePokemon, BattleAction, BattleItem, MEGA_POKEMON, getDynamaxMove } from '../types/battle';
 import { Pokemon, Move, PokemonType } from '../types/pokemon';
 import { generateAITeam } from '../services/aiTeamGenerator';
 import { getAIAction } from '../services/battleAI';
 import { calculateDamage, applyDamage, processEndOfTurn, checkBattleEnd, getSpeedOrder } from '../services/battleEngine';
 import { getLearnableMoves, canPokemonLearnMove } from '../services/moveValidator';
+import { useAudio } from '../services/audioService';
 import { getBattleSprite } from '../utils/sprites';
 import { STARTER_ITEMS, HELD_ITEMS } from '../data/items';
 import { typeColors } from '../styles/themes';
+import { ParticleEffect, DamagePopup, ScreenFlash } from '../components/BattleEffects';
 import '../styles/battle-animations.css';
 
 export default function BattleGame() {
   const { theme } = useThemeStore();
   const { team } = useTeamStore();
+  const { recordMatch } = useRankingStore();
+  const audio = useAudio();
 
   const [gameState, setGameState] = useState<'menu' | 'team-select' | 'item-select' | 'moveset-select' | 'battle' | 'ended'>('menu');
   const [selectedForBattle, setSelectedForBattle] = useState<number[]>([]);
@@ -48,17 +53,61 @@ export default function BattleGame() {
     effectText: ''
   });
 
+  // Particle effects state
+  const [particleEffect, setParticleEffect] = useState<{
+    type: 'attack' | 'super-effective' | 'critical' | 'heal' | 'faint' | 'mega' | 'dynamax' | 'tera' | null;
+    position: { x: number; y: number };
+    color?: string;
+  }>({ type: null, position: { x: 0, y: 0 } });
+  const [damagePopup, setDamagePopup] = useState<{
+    damage: number;
+    position: { x: number; y: number };
+    isCritical: boolean;
+    isHeal: boolean;
+  } | null>(null);
+  const [screenFlash, setScreenFlash] = useState<string | null>(null);
+  const [matchRecorded, setMatchRecorded] = useState(false);
+
+  // Record match result when game ends
+  useEffect(() => {
+    if (gameState === 'ended' && battleState && !matchRecorded) {
+      const playerWon = battleState.winner === 'player';
+      audio.playBattleResult(playerWon);
+
+      // Record match in ranking system
+      const playerTeamNames = battleState.playerTeam.selectedForBattle.map(p => p.name);
+      const opponentTeamNames = battleState.aiTeam.selectedForBattle.map(p => p.name);
+
+      recordMatch({
+        result: playerWon ? 'win' : 'loss',
+        format: 'vgc',
+        playerTeam: playerTeamNames,
+        opponentTeam: opponentTeamNames,
+        turnsPlayed: battleState.currentTurn
+      });
+      setMatchRecorded(true);
+    }
+
+    // Reset matchRecorded when starting a new game
+    if (gameState === 'menu') {
+      setMatchRecorded(false);
+    }
+  }, [gameState, battleState, matchRecorded, audio, recordMatch]);
+
   const allTypes: PokemonType[] = [
     'normal', 'fire', 'water', 'electric', 'grass', 'ice',
     'fighting', 'poison', 'ground', 'flying', 'psychic',
     'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy'
   ];
 
-  const startGame = () => {
+  const startGame = async () => {
     if (team.length < 4) {
       alert('You need at least 4 Pokemon!');
       return;
     }
+    // Initialize audio on user interaction
+    await audio.initialize();
+    audio.playSFX('menu-open');
     setGameState('team-select');
     setSelectedForBattle([]);
   };
@@ -219,7 +268,7 @@ export default function BattleGame() {
   };
 
   const initializeBattle = async (playerPokemon: Pokemon[]) => {
-    const playerTeamBattle = playerPokemon.map(convertToBattlePokemon);
+    const playerTeamBattle = playerPokemon.map((p, i) => convertToBattlePokemon(p, i));
     const aiPokemon = await generateAITeam(playerPokemon);
     const aiSelected = aiPokemon.slice(0, 4);
 
@@ -247,9 +296,34 @@ export default function BattleGame() {
       },
       currentTurn: 1,
       battleLog: ['Battle Start!', `Go ${playerTeamBattle[0].name}!`, `Opponent sent ${aiSelected[0].name}!`],
+      field: {
+        weather: null,
+        weatherTurns: 0,
+        terrain: null,
+        terrainTurns: 0,
+        playerSide: {
+          hazards: { stealthRock: false, spikesLayers: 0, toxicSpikesLayers: 0, stickyWeb: false },
+          reflect: 0,
+          lightScreen: 0,
+          tailwind: 0,
+          auroraVeil: 0,
+          trickRoom: 0
+        },
+        aiSide: {
+          hazards: { stealthRock: false, spikesLayers: 0, toxicSpikesLayers: 0, stickyWeb: false },
+          reflect: 0,
+          lightScreen: 0,
+          tailwind: 0,
+          auroraVeil: 0,
+          trickRoom: 0
+        }
+      },
       isPlayerTurn: true,
       battleEnded: false,
-      format: 'vgc'
+      format: 'vgc',
+      isDoubles: true,
+      musicEnabled: false,
+      sfxEnabled: audio.sfxEnabled
     };
 
     setBattleState(initialState);
@@ -262,7 +336,7 @@ export default function BattleGame() {
     setSelectedTeraType(null);
   };
 
-  const convertToBattlePokemon = (pokemon: Pokemon): BattlePokemon => {
+  const convertToBattlePokemon = (pokemon: Pokemon, index: number = 0): BattlePokemon => {
     const level = 50;
     const maxHp = Math.floor(((2 * pokemon.stats.hp + 31 + 63) * level) / 100) + level + 10;
     const canMega = MEGA_POKEMON[pokemon.name.toLowerCase()] !== undefined;
@@ -280,7 +354,15 @@ export default function BattleGame() {
       canMegaEvolve: canMega,
       megaState: { isMega: false },
       dynamaxState: { isDynamaxed: false, turnsRemaining: 0 },
-      teraState: { isTerastallized: false, teraType: null }
+      teraState: { isTerastallized: false, teraType: null },
+      // VGC specific fields
+      activeAbility: typeof pokemon.abilities?.[0] === 'string' ? pokemon.abilities[0] : pokemon.abilities?.[0]?.name || 'unknown',
+      abilityActivated: false,
+      isGrounded: !pokemon.types.includes('flying'),
+      hasSubstitute: false,
+      substituteHp: 0,
+      protectCount: 0,
+      position: index
     };
   };
 
@@ -389,6 +471,10 @@ export default function BattleGame() {
     });
 
     team.hasMegaEvolved = true;
+    audio.playSFX('mega-evolution');
+    setParticleEffect({ type: 'mega', position: { x: 200, y: 300 }, color: '#EC4899' });
+    setScreenFlash('#EC4899');
+    setTimeout(() => setScreenFlash(null), 300);
     logs.push(`${active.name} Mega Evolved!`);
   };
 
@@ -416,6 +502,10 @@ export default function BattleGame() {
     );
 
     team.hasDynamaxed = true;
+    audio.playSFX('dynamax');
+    setParticleEffect({ type: 'dynamax', position: { x: 200, y: 300 }, color: '#FF0066' });
+    setScreenFlash('#FF0066');
+    setTimeout(() => setScreenFlash(null), 400);
     logs.push(`${active.name} Dynamaxed!`);
   };
 
@@ -435,6 +525,10 @@ export default function BattleGame() {
     active.types = [teraType];
 
     team.hasTerastallized = true;
+    audio.playSFX('terastallize');
+    setParticleEffect({ type: 'tera', position: { x: 200, y: 300 }, color: typeColors[teraType] });
+    setScreenFlash(typeColors[teraType]);
+    setTimeout(() => setScreenFlash(null), 300);
     logs.push(`${active.name} Terastallized into ${teraType.toUpperCase()} type!`);
   };
 
@@ -470,10 +564,39 @@ export default function BattleGame() {
       const move = attacker.selectedMoves[action.moveIndex!];
 
       setAnimations(prev => ({ ...prev, [isPlayer ? 'playerAttack' : 'aiAttack']: true }));
+
+      // Play move type sound
+      audio.playTypeSound(move.type);
+
       await new Promise(r => setTimeout(r, 300));
 
       const damageCalc = calculateDamage(attacker, defender, move);
       logs.push(damageCalc.description);
+
+      // Determine effect type and color for particles
+      const isCritical = damageCalc.isCritical || false;
+      const effectType = damageCalc.effectiveness === 0 ? null :
+        isCritical ? 'critical' :
+        damageCalc.effectiveness > 1 ? 'super-effective' : 'attack';
+
+      // Show particle effect
+      if (effectType) {
+        const targetPos = isPlayer ? { x: 700, y: 100 } : { x: 200, y: 300 };
+        setParticleEffect({
+          type: effectType as any,
+          position: targetPos,
+          color: typeColors[move.type]
+        });
+      }
+
+      // Play damage sound based on effectiveness
+      audio.playAttackSound(damageCalc.effectiveness, isCritical, move.category === 'physical');
+
+      // Screen flash for super effective or critical
+      if (damageCalc.effectiveness > 1 || isCritical) {
+        setScreenFlash(isCritical ? '#FFD700' : '#FF4444');
+        setTimeout(() => setScreenFlash(null), 200);
+      }
 
       setAnimations(prev => ({
         ...prev,
@@ -481,15 +604,38 @@ export default function BattleGame() {
         effectText: damageCalc.effectiveness > 1 ? 'Super Effective!' : damageCalc.effectiveness < 1 ? 'Not very effective...' : ''
       }));
 
+      // Show damage popup
+      const popupPos = isPlayer ? { x: 700, y: 120 } : { x: 200, y: 320 };
+      setDamagePopup({
+        damage: damageCalc.damage,
+        position: popupPos,
+        isCritical,
+        isHeal: false
+      });
+
       await new Promise(r => setTimeout(r, 600));
       applyDamage(defender, damageCalc.damage);
 
+      // Clear damage popup after animation
+      setTimeout(() => setDamagePopup(null), 1500);
+      setTimeout(() => setParticleEffect({ type: null, position: { x: 0, y: 0 } }), 1000);
+
       if (defender.isFainted) {
         logs.push(`${defender.name} fainted!`);
+        audio.playSFX('pokemon-faint');
+
+        // Show faint particles
+        setParticleEffect({
+          type: 'faint',
+          position: isPlayer ? { x: 700, y: 100 } : { x: 200, y: 300 },
+          color: '#666666'
+        });
+
         const next = targetTeam.selectedForBattle.find(p => !p.isFainted && !p.isActive);
         if (next) {
           defender.isActive = false;
           next.isActive = true;
+          audio.playSFX('pokemon-switch');
           logs.push(`${isPlayer ? 'Opponent' : 'You'} sent out ${next.name}!`);
         }
       }
@@ -500,6 +646,7 @@ export default function BattleGame() {
       const switchTo = actingTeam.selectedForBattle[action.switchToIndex!];
       current.isActive = false;
       switchTo.isActive = true;
+      audio.playSFX('pokemon-switch');
       logs.push(`${isPlayer ? 'You' : 'Opponent'} switched to ${switchTo.name}!`);
     }
   };
@@ -524,6 +671,18 @@ export default function BattleGame() {
           <Button size="lg" onClick={startGame} disabled={team.length < 4} style={{ background: theme.gradients.primary, border: 'none', padding: '16px 32px', fontWeight: 700, borderRadius: '12px' }}>
             {team.length < 4 ? `Need ${4 - team.length} more Pokemon` : 'Start Battle'}
           </Button>
+
+          {/* Sound Toggle */}
+          <div className="mt-3">
+            <Button
+              variant={audio.sfxEnabled ? 'outline-success' : 'outline-secondary'}
+              onClick={audio.toggleSFX}
+              size="sm"
+            >
+              {audio.sfxEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+              <span className="ms-2">{audio.sfxEnabled ? 'Sound On' : 'Sound Off'}</span>
+            </Button>
+          </div>
         </Card>
       </div>
     );
@@ -820,7 +979,30 @@ export default function BattleGame() {
           </div>
 
           {/* Battle Arena */}
-          <div style={{ background: 'linear-gradient(180deg, rgba(34,197,94,0.2) 0%, rgba(34,197,94,0.05) 100%)', borderRadius: '24px', padding: '24px', marginBottom: '16px', position: 'relative', minHeight: '380px' }}>
+          <div style={{ background: 'linear-gradient(180deg, rgba(34,197,94,0.2) 0%, rgba(34,197,94,0.05) 100%)', borderRadius: '24px', padding: '24px', marginBottom: '16px', position: 'relative', minHeight: '380px', overflow: 'hidden' }}>
+            {/* Screen Flash Effect */}
+            {screenFlash && <ScreenFlash color={screenFlash} />}
+
+            {/* Particle Effects */}
+            {particleEffect.type && (
+              <ParticleEffect
+                type={particleEffect.type}
+                position={particleEffect.position}
+                color={particleEffect.color}
+                onComplete={() => setParticleEffect({ type: null, position: { x: 0, y: 0 } })}
+              />
+            )}
+
+            {/* Damage Popup */}
+            {damagePopup && (
+              <DamagePopup
+                damage={damagePopup.damage}
+                position={damagePopup.position}
+                isCritical={damagePopup.isCritical}
+                isHeal={damagePopup.isHeal}
+                onComplete={() => setDamagePopup(null)}
+              />
+            )}
 
             {/* Opponent Pokemon */}
             <div style={{ position: 'absolute', top: '20px', right: '20px', display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
@@ -1052,13 +1234,18 @@ export default function BattleGame() {
   // END SCREEN
   if (gameState === 'ended' && battleState) {
     const playerWon = battleState.winner === 'player';
+
     return (
       <div style={{ background: `linear-gradient(180deg, ${playerWon ? '#166534' : '#991B1B'} 0%, ${theme.colors.bgPrimary} 100%)`, minHeight: '100vh' }} className="d-flex align-items-center justify-content-center p-4">
         <Card style={{ background: theme.colors.bgCard, borderRadius: '24px', maxWidth: '400px', width: '100%', border: `4px solid ${playerWon ? '#22C55E' : '#EF4444'}` }} className="p-5 text-center">
           <div style={{ fontSize: '5rem', marginBottom: '16px' }}>{playerWon ? '🏆' : '💀'}</div>
           <h1 style={{ color: theme.colors.textPrimary, fontWeight: 800, marginBottom: '8px' }}>{playerWon ? 'Victory!' : 'Defeat'}</h1>
           <p style={{ color: theme.colors.textSecondary, marginBottom: '24px' }}>{playerWon ? 'You are a Pokemon Champion!' : 'Better luck next time!'}</p>
+          <p style={{ color: theme.colors.textMuted, fontSize: '0.85rem', marginBottom: '16px' }}>
+            Battle lasted {battleState.currentTurn} turns
+          </p>
           <Button size="lg" onClick={() => { setGameState('menu'); setBattleState(null); setSelectedForBattle([]); }} style={{ background: theme.gradients.primary, border: 'none', fontWeight: 700 }}>Play Again</Button>
+          <Button variant="outline-primary" className="w-100 mt-2" href="/Pokemon-Analyzer/ranking">View Rankings</Button>
         </Card>
       </div>
     );

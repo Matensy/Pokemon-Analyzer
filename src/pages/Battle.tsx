@@ -76,9 +76,34 @@ export default function Battle() {
       },
       currentTurn: 1,
       battleLog: ['Battle started!', `Go! ${playerBattlePokemon[0].name}!`, `Opponent sent out ${aiSelected[0].name}!`],
+      field: {
+        weather: null,
+        weatherTurns: 0,
+        terrain: null,
+        terrainTurns: 0,
+        playerSide: {
+          hazards: { stealthRock: false, spikesLayers: 0, toxicSpikesLayers: 0, stickyWeb: false },
+          reflect: 0,
+          lightScreen: 0,
+          tailwind: 0,
+          auroraVeil: 0,
+          trickRoom: 0
+        },
+        aiSide: {
+          hazards: { stealthRock: false, spikesLayers: 0, toxicSpikesLayers: 0, stickyWeb: false },
+          reflect: 0,
+          lightScreen: 0,
+          tailwind: 0,
+          auroraVeil: 0,
+          trickRoom: 0
+        }
+      },
       isPlayerTurn: true,
       battleEnded: false,
-      format: 'vgc'
+      format: 'vgc',
+      isDoubles: true,
+      musicEnabled: false,
+      sfxEnabled: true
     };
 
     setBattleState(initialState);
@@ -97,7 +122,7 @@ export default function Battle() {
     return scores.slice(0, 4).map(s => fullTeam[s.index]);
   };
 
-  const convertToBattlePokemon = (pokemon: Pokemon): BattlePokemon => {
+  const convertToBattlePokemon = (pokemon: Pokemon, index: number = 0): BattlePokemon => {
     const level = 50;
     const maxHp = Math.floor(((2 * pokemon.stats.hp + 31 + 63) * level) / 100) + level + 10;
     const canMega = MEGA_POKEMON[pokemon.name.toLowerCase()] !== undefined;
@@ -125,7 +150,15 @@ export default function Battle() {
       canMegaEvolve: canMega,
       megaState: { isMega: false },
       dynamaxState: { isDynamaxed: false, turnsRemaining: 0 },
-      teraState: { isTerastallized: false, teraType: null }
+      teraState: { isTerastallized: false, teraType: null },
+      // VGC specific fields
+      activeAbility: typeof pokemon.abilities?.[0] === 'string' ? pokemon.abilities[0] : pokemon.abilities?.[0]?.name || 'unknown',
+      abilityActivated: false,
+      isGrounded: !pokemon.types.includes('flying'),
+      hasSubstitute: false,
+      substituteHp: 0,
+      protectCount: 0,
+      position: index
     };
   };
 
