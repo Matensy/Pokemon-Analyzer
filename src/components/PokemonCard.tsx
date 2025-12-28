@@ -5,7 +5,6 @@ import { Pokemon } from '../types/pokemon';
 import { useThemeStore } from '../store/themeStore';
 import { typeColors } from '../styles/themes';
 import { getAnimatedSprite } from '../utils/sprites';
-import '../styles/battle-animations.css';
 
 interface PokemonCardProps {
   pokemon: Pokemon;

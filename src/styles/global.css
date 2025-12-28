@@ -129,6 +129,22 @@ h1, h2, h3, h4, h5, h6 {
   50% { transform: translateY(-10px); }
 }
 
+@keyframes particle-rise {
+  0% { opacity: 0; transform: translateY(0); }
+  50% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-30px); }
+}
+
+@keyframes float-subtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes crystal-shimmer {
+  0%, 100% { opacity: 1; filter: brightness(1); }
+  50% { opacity: 0.9; filter: brightness(1.2); }
+}
+
 /* Animation Classes */
 .fade-in { animation: fadeIn 0.3s ease forwards; }
 .fade-in-up { animation: fadeInUp 0.4s ease forwards; }
@@ -139,7 +155,43 @@ h1, h2, h3, h4, h5, h6 {
 .animate-pulse { animation: pulse 2s infinite; }
 .animate-bounce { animation: bounce 1s infinite; }
 .animate-float { animation: float 3s ease-in-out infinite; }
+.animate-float-subtle { animation: float-subtle 2s ease-in-out infinite; }
 .animate-glow { animation: glow 2s ease-in-out infinite; }
+
+/* Pokemon Card Styles */
+.pokemon-card-hover {
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.pokemon-shadow {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 10px;
+  background: radial-gradient(ellipse, rgba(0,0,0,0.3) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.card-shine::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transition: all 0.6s;
+}
+
+.card-shine:hover::before {
+  left: 100%;
+}
 
 /* Staggered animations */
 .stagger-1 { animation-delay: 0.1s; }

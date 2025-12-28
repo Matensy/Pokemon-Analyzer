@@ -4,11 +4,7 @@ import { useThemeStore } from './store/themeStore';
 import Header from './components/Header';
 import Pokedex from './pages/Pokedex';
 import TeamBuilder from './pages/TeamBuilder';
-import BattleGame from './pages/BattleGame';
-import ChampionsTrainer from './pages/ChampionsTrainer';
-import DamageCalculator from './pages/DamageCalculator';
 import VGCStats from './pages/VGCStats';
-import Ranking from './pages/Ranking';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './styles/global.css';
 
@@ -33,14 +29,10 @@ export default function App() {
         <Header />
 
         <Routes>
-          <Route path="/" element={<Navigate to="/pokedex" replace />} />
+          <Route path="/" element={<Navigate to="/team-builder" replace />} />
           <Route path="/pokedex" element={<Pokedex />} />
           <Route path="/team-builder" element={<TeamBuilder />} />
-          <Route path="/champions" element={<ChampionsTrainer />} />
-          <Route path="/battle" element={<BattleGame />} />
-          <Route path="/calculator" element={<DamageCalculator />} />
           <Route path="/stats" element={<VGCStats />} />
-          <Route path="/ranking" element={<Ranking />} />
         </Routes>
       </div>
     </Router>

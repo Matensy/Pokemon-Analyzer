@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Navbar, Container, Nav, Offcanvas } from 'react-bootstrap';
 import { Link, useLocation } from 'react-router-dom';
-import { Moon, Sun, Menu, BookOpen, Users, Swords, Trophy, Zap, Calculator, BarChart3, Award } from 'lucide-react';
+import { Moon, Sun, Menu, BookOpen, Users, BarChart3, Zap, Sparkles } from 'lucide-react';
 import { useThemeStore } from '../store/themeStore';
 import { useTeamStore } from '../store/teamStore';
 
@@ -12,12 +12,9 @@ export default function Header() {
   const [showMenu, setShowMenu] = useState(false);
 
   const navLinks = [
-    { path: '/pokedex', label: 'Pokedex', icon: <BookOpen size={18} /> },
     { path: '/team-builder', label: 'Team Builder', icon: <Users size={18} /> },
-    { path: '/battle', label: 'Battle', icon: <Swords size={18} /> },
-    { path: '/calculator', label: 'Calculator', icon: <Calculator size={18} /> },
+    { path: '/pokedex', label: 'Pokedex', icon: <BookOpen size={18} /> },
     { path: '/stats', label: 'VGC Stats', icon: <BarChart3 size={18} /> },
-    { path: '/ranking', label: 'Ranking', icon: <Award size={18} /> },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -65,7 +62,7 @@ export default function Header() {
                   letterSpacing: '-0.5px',
                 }}
               >
-                Pokemon Champions
+                Pokemon VGC
               </span>
               <div
                 style={{
@@ -73,9 +70,13 @@ export default function Header() {
                   color: theme.colors.textMuted,
                   fontWeight: 500,
                   marginTop: '-4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
                 }}
               >
-                Trainer Hub
+                <Sparkles size={10} />
+                AI Team Builder
               </div>
             </div>
           </Link>
