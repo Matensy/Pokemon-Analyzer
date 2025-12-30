@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PokeStatsBR - Estatísticas do Pokémon Showdown em português para a comunidade brasileira">
+    <title>{% block title %}PokeStatsBR{% endblock %}</title>
+
+    <!-- Favicon -->
+    <link rel="icon" href="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" type="image/png">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <a href="{{ url_for('index') }}" class="logo">
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" alt="Pokeball" class="logo-icon">
+                <span class="logo-text">PokeStats<span class="logo-br">BR</span></span>
+            </a>
+
+            <nav class="nav">
+                <a href="{{ url_for('index') }}" class="nav-link {% if request.endpoint == 'index' %}active{% endif %}">
+                    Formatos
+                </a>
+                <a href="{{ url_for('about') }}" class="nav-link {% if request.endpoint == 'about' %}active{% endif %}">
+                    Sobre
+                </a>
+                <a href="https://pokemonshowdown.com" target="_blank" rel="noopener" class="nav-link external">
+                    Showdown
+                </a>
+            </nav>
+
+            <button class="mobile-menu-btn" aria-label="Menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu">
+        <a href="{{ url_for('index') }}" class="mobile-menu-link">Formatos</a>
+        <a href="{{ url_for('about') }}" class="mobile-menu-link">Sobre</a>
+        <a href="https://pokemonshowdown.com" target="_blank" rel="noopener" class="mobile-menu-link">Showdown</a>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-info">
+                    <p class="footer-brand">PokeStatsBR</p>
+                    <p class="footer-desc">Estatísticas do Pokémon Showdown em português para a comunidade brasileira.</p>
+                    <p class="footer-credits">Baseado no <a href="https://munchstats.com" target="_blank" rel="noopener">MunchStats</a></p>
+                </div>
+
+                <div class="footer-links">
+                    <h4>Links</h4>
+                    <a href="https://www.smogon.com/stats/" target="_blank" rel="noopener">Smogon Stats</a>
+                    <a href="https://pokemonshowdown.com" target="_blank" rel="noopener">Pokémon Showdown</a>
+                    <a href="https://pikalytics.com" target="_blank" rel="noopener">Pikalytics</a>
+                </div>
+
+                <div class="footer-links">
+                    <h4>Comunidade</h4>
+                    <a href="https://www.smogon.com/forums/" target="_blank" rel="noopener">Smogon Forums</a>
+                    <a href="https://www.reddit.com/r/pokemon/" target="_blank" rel="noopener">r/pokemon</a>
+                    <a href="https://www.reddit.com/r/VGC/" target="_blank" rel="noopener">r/VGC</a>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>Pokémon e todos os nomes relacionados são marca registrada Nintendo 1996-2024.</p>
+                <p>Este é um projeto de fã não-oficial. Feito com carinho para a comunidade brasileira.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

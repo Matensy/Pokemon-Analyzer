@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Página não encontrada - PokeStatsBR{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="error-page">
+        <div class="error-content">
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/54.png"
+                 alt="Psyduck confuso"
+                 class="error-sprite">
+            <h1 class="error-code">404</h1>
+            <h2 class="error-title">Página não encontrada</h2>
+            <p class="error-message">
+                Parece que você se perdeu como um Psyduck confuso.
+                A página que você procura não existe ou foi movida.
+            </p>
+            <div class="error-actions">
+                <a href="{{ url_for('index') }}" class="btn btn-primary">
+                    Voltar para o Início
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

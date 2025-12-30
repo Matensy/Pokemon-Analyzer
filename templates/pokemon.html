@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+
+{% block title %}{{ pokemon_name }} - {{ format_name }} - PokeStatsBR{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb">
+        <a href="{{ url_for('index') }}">Formatos</a>
+        <span class="breadcrumb-sep">/</span>
+        <a href="{{ url_for('format_page', format_code=format_code) }}">{{ format_name }}</a>
+        <span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-current">{{ pokemon_name }}</span>
+    </nav>
+
+    <!-- Loading -->
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>Carregando dados...</p>
+    </div>
+
+    <!-- Error -->
+    <div id="error" class="error hidden">
+        <p>Erro ao carregar dados do Pokémon.</p>
+        <a href="{{ url_for('format_page', format_code=format_code) }}" class="btn btn-primary">Voltar</a>
+    </div>
+
+    <!-- Pokemon Details -->
+    <div id="pokemon-details" class="pokemon-details hidden">
+        <!-- Header -->
+        <header class="pokemon-header">
+            <div class="pokemon-header-main">
+                <img id="pokemon-sprite" src="" alt="{{ pokemon_name }}" class="pokemon-sprite-large">
+                <div class="pokemon-header-info">
+                    <h1 id="pokemon-name" class="pokemon-title">{{ pokemon_name }}</h1>
+                    <div class="pokemon-meta">
+                        <span class="meta-item rank">
+                            <strong>Rank:</strong> <span id="pokemon-rank">#-</span>
+                        </span>
+                        <span class="meta-item usage">
+                            <strong>Uso:</strong> <span id="pokemon-usage">-%</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export Button -->
+            <button id="export-btn" class="btn btn-primary export-btn">
+                Exportar para Showdown
+            </button>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <!-- Moves -->
+            <section class="stats-section">
+                <h2 class="stats-section-title">Movimentos</h2>
+                <div id="moves-list" class="stats-list">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+
+            <!-- Items -->
+            <section class="stats-section">
+                <h2 class="stats-section-title">Itens</h2>
+                <div id="items-list" class="stats-list">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+
+            <!-- Abilities -->
+            <section class="stats-section">
+                <h2 class="stats-section-title">Habilidades</h2>
+                <div id="abilities-list" class="stats-list">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+
+            <!-- Tera Types -->
+            <section class="stats-section" id="tera-section">
+                <h2 class="stats-section-title">Tipos Tera</h2>
+                <div id="tera-list" class="stats-list tera-types">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+
+            <!-- EV Spreads -->
+            <section class="stats-section spreads-section">
+                <h2 class="stats-section-title">Distribuições de EVs</h2>
+                <div id="spreads-list" class="spreads-list">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+
+            <!-- Teammates -->
+            <section class="stats-section teammates-section">
+                <h2 class="stats-section-title">Parceiros de Time</h2>
+                <div id="teammates-list" class="teammates-grid">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div id="export-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Exportar Set</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <textarea id="export-text" readonly></textarea>
+                <button id="copy-btn" class="btn btn-primary" onclick="copyToClipboard()">
+                    Copiar para Área de Transferência
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const FORMAT_CODE = "{{ format_code }}";
+    const POKEMON_NAME = "{{ pokemon_name }}";
+
+    // Get URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const RATING = urlParams.get('rating') || '1760';
+
+    let pokemonData = null;
+
+    // Type colors for Tera Types
+    const typeColors = {
+        'Normal': '#A8A878',
+        'Fire': '#F08030',
+        'Water': '#6890F0',
+        'Electric': '#F8D030',
+        'Grass': '#78C850',
+        'Ice': '#98D8D8',
+        'Fighting': '#C03028',
+        'Poison': '#A040A0',
+        'Ground': '#E0C068',
+        'Flying': '#A890F0',
+        'Psychic': '#F85888',
+        'Bug': '#A8B820',
+        'Rock': '#B8A038',
+        'Ghost': '#705898',
+        'Dragon': '#7038F8',
+        'Dark': '#705848',
+        'Steel': '#B8B8D0',
+        'Fairy': '#EE99AC',
+        'Stellar': '#44AACC'
+    };
+
+    // Get Showdown sprite
+    function getShowdownSprite(pokemonName) {
+        let name = pokemonName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return `https://play.pokemonshowdown.com/sprites/gen5/${name}.png`;
+    }
+
+    // Create stat bar
+    function createStatBar(name, percentage, extraClass = '') {
+        return `
+            <div class="stat-item ${extraClass}">
+                <div class="stat-header">
+                    <span class="stat-name">${name}</span>
+                    <span class="stat-percentage">${percentage.toFixed(1)}%</span>
+                </div>
+                <div class="stat-bar">
+                    <div class="stat-fill" style="width: ${Math.min(percentage, 100)}%"></div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Create Tera Type badge
+    function createTeraBadge(type, percentage) {
+        const color = typeColors[type] || '#888';
+        return `
+            <div class="tera-badge" style="background-color: ${color}">
+                <span class="tera-name">${type}</span>
+                <span class="tera-percentage">${percentage.toFixed(1)}%</span>
+            </div>
+        `;
+    }
+
+    // Create spread card
+    function createSpreadCard(spread) {
+        const evList = [];
+        if (spread.hp > 0) evList.push(`${spread.hp} HP`);
+        if (spread.atk > 0) evList.push(`${spread.atk} Atk`);
+        if (spread.def > 0) evList.push(`${spread.def} Def`);
+        if (spread.spa > 0) evList.push(`${spread.spa} SpA`);
+        if (spread.spd > 0) evList.push(`${spread.spd} SpD`);
+        if (spread.spe > 0) evList.push(`${spread.spe} Spe`);
+
+        return `
+            <div class="spread-card">
+                <div class="spread-header">
+                    <span class="spread-nature">${spread.nature}</span>
+                    <span class="spread-percentage">${spread.percentage.toFixed(1)}%</span>
+                </div>
+                <div class="spread-evs">${evList.join(' / ')}</div>
+            </div>
+        `;
+    }
+
+    // Create teammate card
+    function createTeammateCard(teammate) {
+        const sprite = getShowdownSprite(teammate.name);
+        return `
+            <a href="/pokemon/${FORMAT_CODE}/${encodeURIComponent(teammate.name)}?rating=${RATING}"
+               class="teammate-card">
+                <img src="${sprite}" alt="${teammate.name}" class="teammate-sprite"
+                     onerror="this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png'">
+                <span class="teammate-name">${teammate.name}</span>
+                <span class="teammate-score">${teammate.score.toFixed(1)}%</span>
+            </a>
+        `;
+    }
+
+    // Render Pokemon details
+    function renderDetails(data) {
+        // Header
+        document.getElementById('pokemon-sprite').src = getShowdownSprite(data.name);
+        document.getElementById('pokemon-name').textContent = data.name;
+        document.getElementById('pokemon-rank').textContent = `#${data.rank}`;
+        document.getElementById('pokemon-usage').textContent = `${data.usage.toFixed(2)}%`;
+
+        // Moves
+        const movesList = document.getElementById('moves-list');
+        movesList.innerHTML = data.moves.map(m => createStatBar(m.name, m.percentage)).join('');
+
+        // Items
+        const itemsList = document.getElementById('items-list');
+        itemsList.innerHTML = data.items.map(i => createStatBar(i.name, i.percentage)).join('');
+
+        // Abilities
+        const abilitiesList = document.getElementById('abilities-list');
+        abilitiesList.innerHTML = data.abilities.map(a => createStatBar(a.name, a.percentage)).join('');
+
+        // Tera Types
+        const teraSection = document.getElementById('tera-section');
+        const teraList = document.getElementById('tera-list');
+        if (data.tera_types && data.tera_types.length > 0) {
+            teraList.innerHTML = data.tera_types.map(t => createTeraBadge(t.name, t.percentage)).join('');
+            teraSection.classList.remove('hidden');
+        } else {
+            teraSection.classList.add('hidden');
+        }
+
+        // Spreads
+        const spreadsList = document.getElementById('spreads-list');
+        spreadsList.innerHTML = data.spreads.map(s => createSpreadCard(s)).join('');
+
+        // Teammates
+        const teammatesList = document.getElementById('teammates-list');
+        teammatesList.innerHTML = data.teammates.map(t => createTeammateCard(t)).join('');
+    }
+
+    // Load data
+    async function loadData() {
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const details = document.getElementById('pokemon-details');
+
+        try {
+            const response = await fetch(`/api/pokemon/${FORMAT_CODE}/${encodeURIComponent(POKEMON_NAME)}?rating=${RATING}`);
+
+            if (!response.ok) {
+                throw new Error('Pokemon not found');
+            }
+
+            pokemonData = await response.json();
+            renderDetails(pokemonData);
+
+            loading.classList.add('hidden');
+            details.classList.remove('hidden');
+
+        } catch (err) {
+            console.error('Error:', err);
+            loading.classList.add('hidden');
+            error.classList.remove('hidden');
+        }
+    }
+
+    // Export modal
+    function openModal() {
+        if (!pokemonData || !pokemonData.showdown_set) return;
+
+        document.getElementById('export-text').value = pokemonData.showdown_set;
+        document.getElementById('export-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+        document.getElementById('export-modal').classList.add('hidden');
+    }
+
+    function copyToClipboard() {
+        const textarea = document.getElementById('export-text');
+        textarea.select();
+        document.execCommand('copy');
+
+        const btn = document.getElementById('copy-btn');
+        const originalText = btn.textContent;
+        btn.textContent = 'Copiado!';
+        setTimeout(() => {
+            btn.textContent = originalText;
+        }, 2000);
+    }
+
+    // Event listeners
+    document.getElementById('export-btn').addEventListener('click', openModal);
+
+    document.getElementById('export-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'export-modal') {
+            closeModal();
+        }
+    });
+
+    // Initial load
+    loadData();
+</script>
+{% endblock %}
