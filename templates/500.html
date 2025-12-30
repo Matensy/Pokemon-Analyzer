@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Erro interno - PokeStatsBR{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="error-page">
+        <div class="error-content">
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/132.png"
+                 alt="Ditto derretendo"
+                 class="error-sprite">
+            <h1 class="error-code">500</h1>
+            <h2 class="error-title">Algo deu errado</h2>
+            <p class="error-message">
+                O servidor encontrou um problema inesperado, como um Ditto que
+                tentou se transformar em algo muito complexo.
+                Por favor, tente novamente mais tarde.
+            </p>
+            <div class="error-actions">
+                <a href="{{ url_for('index') }}" class="btn btn-primary">
+                    Voltar para o Início
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

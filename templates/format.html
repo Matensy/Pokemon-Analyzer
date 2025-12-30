@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}{{ format_name }} - PokeStatsBR{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb">
+        <a href="{{ url_for('index') }}">Formatos</a>
+        <span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-current">{{ format_name }}</span>
+    </nav>
+
+    <!-- Format Header -->
+    <header class="format-header">
+        <h1 class="format-title">{{ format_name }}</h1>
+        <p class="format-code-display">{{ format_code }}</p>
+    </header>
+
+    <!-- Controls -->
+    <div class="controls">
+        <div class="control-group">
+            <label for="rating-select">Rating:</label>
+            <select id="rating-select" class="select">
+                {% for rating in ratings %}
+                <option value="{{ rating }}" {% if rating == ratings[-1] %}selected{% endif %}>
+                    {{ rating }}{% if rating == 0 %} (Todos){% elif rating >= 1760 or rating >= 1825 %} (Top){% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="search-input">Buscar:</label>
+            <input type="text" id="search-input" class="input" placeholder="Nome do Pokémon...">
+        </div>
+    </div>
+
+    <!-- Stats Info -->
+    <div id="stats-info" class="stats-info">
+        <span class="info-item">
+            <strong id="total-pokemon">-</strong> Pokémon
+        </span>
+        <span class="info-item">
+            <strong id="total-battles">-</strong> Batalhas
+        </span>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>Carregando dados...</p>
+    </div>
+
+    <!-- Error -->
+    <div id="error" class="error hidden">
+        <p>Erro ao carregar dados. Tente novamente mais tarde.</p>
+        <button onclick="loadData()" class="btn btn-primary">Tentar Novamente</button>
+    </div>
+
+    <!-- Pokemon List -->
+    <div id="pokemon-list" class="pokemon-list hidden">
+        <!-- Populated by JavaScript -->
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const FORMAT_CODE = "{{ format_code }}";
+    const RATINGS = {{ ratings | tojson }};
+
+    let currentData = null;
+
+    // Get Pokemon sprite URL
+    function getSpriteUrl(pokemonName) {
+        // Normalize name for sprite URL
+        let name = pokemonName.toLowerCase()
+            .replace(/[^a-z0-9-]/g, '-')
+            .replace(/--+/g, '-')
+            .replace(/^-|-$/g, '');
+
+        // Handle special cases
+        const specialCases = {
+            'urshifu-rapid-strike': 'urshifu-rapid-strike',
+            'urshifu-single-strike': 'urshifu',
+            'ogerpon-hearthflame': 'ogerpon-hearthflame',
+            'ogerpon-wellspring': 'ogerpon-wellspring',
+            'ogerpon-cornerstone': 'ogerpon-cornerstone',
+            'terapagos-stellar': 'terapagos-stellar',
+            'terapagos-terastal': 'terapagos-terastal',
+        };
+
+        if (specialCases[name]) {
+            name = specialCases[name];
+        }
+
+        return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${name}.png`;
+    }
+
+    // Get Showdown sprite (more reliable)
+    function getShowdownSprite(pokemonName) {
+        let name = pokemonName.toLowerCase()
+            .replace(/[^a-z0-9]/g, '');
+        return `https://play.pokemonshowdown.com/sprites/gen5/${name}.png`;
+    }
+
+    // Format number with commas
+    function formatNumber(num) {
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    // Create Pokemon card HTML
+    function createPokemonCard(pokemon) {
+        const spriteUrl = getShowdownSprite(pokemon.name);
+
+        return `
+            <a href="/pokemon/${FORMAT_CODE}/${encodeURIComponent(pokemon.name)}?rating=${document.getElementById('rating-select').value}"
+               class="pokemon-card">
+                <div class="pokemon-rank">#${pokemon.rank}</div>
+                <img src="${spriteUrl}"
+                     alt="${pokemon.name}"
+                     class="pokemon-sprite"
+                     onerror="this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png'">
+                <div class="pokemon-info">
+                    <span class="pokemon-name">${pokemon.name}</span>
+                    <div class="pokemon-usage">
+                        <div class="usage-bar">
+                            <div class="usage-fill" style="width: ${Math.min(pokemon.usage, 100)}%"></div>
+                        </div>
+                        <span class="usage-text">${pokemon.usage.toFixed(2)}%</span>
+                    </div>
+                </div>
+            </a>
+        `;
+    }
+
+    // Render Pokemon list
+    function renderPokemonList(data) {
+        const container = document.getElementById('pokemon-list');
+        const searchTerm = document.getElementById('search-input').value.toLowerCase();
+
+        let pokemonList = data.ranked_list || [];
+
+        // Filter by search
+        if (searchTerm) {
+            pokemonList = pokemonList.filter(p =>
+                p.name.toLowerCase().includes(searchTerm)
+            );
+        }
+
+        if (pokemonList.length === 0) {
+            container.innerHTML = '<p class="no-results">Nenhum Pokémon encontrado.</p>';
+            return;
+        }
+
+        container.innerHTML = pokemonList.map(p => {
+            // Get full data for this Pokemon
+            const fullData = data.pokemon[p.name] || p;
+            return createPokemonCard(fullData);
+        }).join('');
+    }
+
+    // Load data from API
+    async function loadData() {
+        const rating = document.getElementById('rating-select').value;
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const list = document.getElementById('pokemon-list');
+        const statsInfo = document.getElementById('stats-info');
+
+        loading.classList.remove('hidden');
+        error.classList.add('hidden');
+        list.classList.add('hidden');
+
+        try {
+            const response = await fetch(`/api/stats/${FORMAT_CODE}?rating=${rating}`);
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch data');
+            }
+
+            currentData = await response.json();
+
+            // Update stats info
+            const totalPokemon = currentData.ranked_list ? currentData.ranked_list.length : 0;
+            const totalBattles = currentData.info ? currentData.info['number of battles'] : 0;
+
+            document.getElementById('total-pokemon').textContent = totalPokemon;
+            document.getElementById('total-battles').textContent = formatNumber(totalBattles);
+
+            // Render list
+            renderPokemonList(currentData);
+
+            loading.classList.add('hidden');
+            list.classList.remove('hidden');
+
+        } catch (err) {
+            console.error('Error loading data:', err);
+            loading.classList.add('hidden');
+            error.classList.remove('hidden');
+        }
+    }
+
+    // Event listeners
+    document.getElementById('rating-select').addEventListener('change', loadData);
+
+    document.getElementById('search-input').addEventListener('input', () => {
+        if (currentData) {
+            renderPokemonList(currentData);
+        }
+    });
+
+    // Initial load
+    loadData();
+</script>
+{% endblock %}
