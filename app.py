@@ -1,36 +1,53 @@
 """
 PokeStatsBR - Estatísticas do Pokémon Showdown em Português
+Aplicativo Desktop para Windows
 """
 
 import os
 import json
 import requests
 import re
-from flask import Flask, render_template, jsonify, request, abort
+from flask import Flask, render_template, jsonify, request
 
 app = Flask(__name__)
 
 BASE_STATS_URL = "https://www.smogon.com/stats"
 
-# Chave da API Gemini (opcional - para sugestões de time)
+# Chave da API Gemini (opcional - para análise de times)
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+
+# ==================== TODOS OS FORMATOS DO SHOWDOWN ====================
 
 FORMATS = {
     'vgc': {
-        'nome': 'VGC (Doubles Oficial)',
+        'nome': 'VGC (Video Game Championships)',
         'formatos': {
+            'gen9vgc2026regf': '[Gen 9] VGC 2026 Reg F',
+            'gen9vgc2026regfbo3': '[Gen 9] VGC 2026 Reg F Bo3',
             'gen9vgc2025regh': '[Gen 9] VGC 2025 Reg H',
-            'gen9vgc2025reggbo3': '[Gen 9] VGC 2025 Reg G Bo3',
+            'gen9vgc2025regj': '[Gen 9] VGC 2025 Reg J',
             'gen9vgc2025regg': '[Gen 9] VGC 2025 Reg G',
+            'gen9vgc2025reggbo3': '[Gen 9] VGC 2025 Reg G Bo3',
             'gen9vgc2024regg': '[Gen 9] VGC 2024 Reg G',
             'gen9vgc2024regf': '[Gen 9] VGC 2024 Reg F',
+            'gen9vgc2024rege': '[Gen 9] VGC 2024 Reg E',
+            'gen9vgc2024regd': '[Gen 9] VGC 2024 Reg D',
+            'gen9vgc2023series2': '[Gen 9] VGC 2023 Series 2',
+            'gen9vgc2023series1': '[Gen 9] VGC 2023 Series 1',
+        }
+    },
+    'bss': {
+        'nome': 'Battle Stadium',
+        'formatos': {
             'gen9battlestadiumsingles': '[Gen 9] Battle Stadium Singles',
-            'gen9battlestadiumsinglesregulationg': '[Gen 9] BSS Reg G',
             'gen9battlestadiumsinglesregulationh': '[Gen 9] BSS Reg H',
+            'gen9battlestadiumsinglesregulationg': '[Gen 9] BSS Reg G',
+            'gen9battlestadiumsinglesregulationf': '[Gen 9] BSS Reg F',
+            'gen9battlestadiumdoubles': '[Gen 9] Battle Stadium Doubles',
         }
     },
     'singles': {
-        'nome': 'Singles Smogon',
+        'nome': 'Singles Smogon (Gen 9)',
         'formatos': {
             'gen9ou': '[Gen 9] OverUsed',
             'gen9ubers': '[Gen 9] Ubers',
@@ -38,12 +55,12 @@ FORMATS = {
             'gen9ru': '[Gen 9] RarelyUsed',
             'gen9nu': '[Gen 9] NeverUsed',
             'gen9pu': '[Gen 9] PU',
+            'gen9zu': '[Gen 9] ZeroUsed',
             'gen9lc': '[Gen 9] Little Cup',
-            'gen9monotype': '[Gen 9] Monotype',
         }
     },
     'doubles': {
-        'nome': 'Doubles Smogon',
+        'nome': 'Doubles Smogon (Gen 9)',
         'formatos': {
             'gen9doublesou': '[Gen 9] Doubles OU',
             'gen9doublesubers': '[Gen 9] Doubles Ubers',
@@ -51,36 +68,172 @@ FORMATS = {
         }
     },
     'nationaldex': {
-        'nome': 'National Dex',
+        'nome': 'National Dex (Gen 9)',
         'formatos': {
             'gen9nationaldex': '[Gen 9] National Dex',
             'gen9nationaldexubers': '[Gen 9] National Dex Ubers',
+            'gen9nationaldexuu': '[Gen 9] National Dex UU',
+            'gen9nationaldexru': '[Gen 9] National Dex RU',
+            'gen9nationaldexdoubles': '[Gen 9] National Dex Doubles',
             'gen9nationaldexmonotype': '[Gen 9] National Dex Monotype',
+            'gen9nationaldexag': '[Gen 9] National Dex AG',
         }
     },
-    'outros': {
-        'nome': 'Outros Formatos',
+    'oms': {
+        'nome': 'Other Metagames (Gen 9)',
         'formatos': {
             'gen9anythinggoes': '[Gen 9] Anything Goes',
-            'gen9randombattle': '[Gen 9] Random Battle',
+            'gen9monotype': '[Gen 9] Monotype',
             'gen9balancedhackmons': '[Gen 9] Balanced Hackmons',
+            'gen9almostanyability': '[Gen 9] Almost Any Ability',
+            'gen9mixandmega': '[Gen 9] Mix and Mega',
+            'gen9stabmons': '[Gen 9] STABmons',
+            'gen9godlygift': '[Gen 9] Godly Gift',
+            'gen9cap': '[Gen 9] CAP',
             'gen91v1': '[Gen 9] 1v1',
+            'gen92v2doubles': '[Gen 9] 2v2 Doubles',
+            'gen9metronomebattle': '[Gen 9] Metronome Battle',
+            'gen9sharedpower': '[Gen 9] Shared Power',
+            'gen9fortemons': '[Gen 9] Fortemons',
+            'gen9purehackmons': '[Gen 9] Pure Hackmons',
         }
     },
-    'legacy': {
-        'nome': 'Gerações Anteriores',
+    'randoms': {
+        'nome': 'Random Battles',
+        'formatos': {
+            'gen9randombattle': '[Gen 9] Random Battle',
+            'gen9randomdoublesbattle': '[Gen 9] Random Doubles',
+            'gen8randombattle': '[Gen 8] Random Battle',
+            'gen7randombattle': '[Gen 7] Random Battle',
+            'gen6randombattle': '[Gen 6] Random Battle',
+            'gen5randombattle': '[Gen 5] Random Battle',
+        }
+    },
+    'gen8': {
+        'nome': 'Geração 8 (Sword/Shield)',
         'formatos': {
             'gen8ou': '[Gen 8] OverUsed',
-            'gen7ou': '[Gen 7] OverUsed',
-            'gen6ou': '[Gen 6] OverUsed',
-            'gen5ou': '[Gen 5] OverUsed',
+            'gen8ubers': '[Gen 8] Ubers',
+            'gen8uu': '[Gen 8] UnderUsed',
+            'gen8ru': '[Gen 8] RarelyUsed',
+            'gen8nu': '[Gen 8] NeverUsed',
+            'gen8pu': '[Gen 8] PU',
+            'gen8lc': '[Gen 8] Little Cup',
+            'gen8doublesou': '[Gen 8] Doubles OU',
+            'gen8vgc2022': '[Gen 8] VGC 2022',
+            'gen8vgc2021': '[Gen 8] VGC 2021',
+            'gen8vgc2020': '[Gen 8] VGC 2020',
+            'gen8nationaldex': '[Gen 8] National Dex',
+            'gen8anythinggoes': '[Gen 8] Anything Goes',
+            'gen8monotype': '[Gen 8] Monotype',
+            'gen8balancedhackmons': '[Gen 8] Balanced Hackmons',
+            'gen8purehackmons': '[Gen 8] Pure Hackmons',
         }
-    }
+    },
+    'gen7': {
+        'nome': 'Geração 7 (Sun/Moon)',
+        'formatos': {
+            'gen7ou': '[Gen 7] OverUsed',
+            'gen7ubers': '[Gen 7] Ubers',
+            'gen7uu': '[Gen 7] UnderUsed',
+            'gen7ru': '[Gen 7] RarelyUsed',
+            'gen7nu': '[Gen 7] NeverUsed',
+            'gen7pu': '[Gen 7] PU',
+            'gen7lc': '[Gen 7] Little Cup',
+            'gen7doublesou': '[Gen 7] Doubles OU',
+            'gen7vgc2019': '[Gen 7] VGC 2019',
+            'gen7vgc2018': '[Gen 7] VGC 2018',
+            'gen7vgc2017': '[Gen 7] VGC 2017',
+            'gen7anythinggoes': '[Gen 7] Anything Goes',
+            'gen7monotype': '[Gen 7] Monotype',
+            'gen7balancedhackmons': '[Gen 7] Balanced Hackmons',
+            'gen7purehackmons': '[Gen 7] Pure Hackmons',
+        }
+    },
+    'gen6': {
+        'nome': 'Geração 6 (X/Y)',
+        'formatos': {
+            'gen6ou': '[Gen 6] OverUsed',
+            'gen6ubers': '[Gen 6] Ubers',
+            'gen6uu': '[Gen 6] UnderUsed',
+            'gen6ru': '[Gen 6] RarelyUsed',
+            'gen6nu': '[Gen 6] NeverUsed',
+            'gen6pu': '[Gen 6] PU',
+            'gen6lc': '[Gen 6] Little Cup',
+            'gen6doublesou': '[Gen 6] Doubles OU',
+            'gen6vgc2016': '[Gen 6] VGC 2016',
+            'gen6anythinggoes': '[Gen 6] Anything Goes',
+            'gen6monotype': '[Gen 6] Monotype',
+            'gen6balancedhackmons': '[Gen 6] Balanced Hackmons',
+            'gen6purehackmons': '[Gen 6] Pure Hackmons',
+        }
+    },
+    'gen5': {
+        'nome': 'Geração 5 (Black/White)',
+        'formatos': {
+            'gen5ou': '[Gen 5] OverUsed',
+            'gen5ubers': '[Gen 5] Ubers',
+            'gen5uu': '[Gen 5] UnderUsed',
+            'gen5ru': '[Gen 5] RarelyUsed',
+            'gen5nu': '[Gen 5] NeverUsed',
+            'gen5lc': '[Gen 5] Little Cup',
+            'gen5doublesou': '[Gen 5] Doubles OU',
+        }
+    },
+    'gen4': {
+        'nome': 'Geração 4 (Diamond/Pearl)',
+        'formatos': {
+            'gen4ou': '[Gen 4] OverUsed',
+            'gen4ubers': '[Gen 4] Ubers',
+            'gen4uu': '[Gen 4] UnderUsed',
+            'gen4nu': '[Gen 4] NeverUsed',
+            'gen4lc': '[Gen 4] Little Cup',
+            'gen4doublesou': '[Gen 4] Doubles OU',
+        }
+    },
+    'gen3': {
+        'nome': 'Geração 3 (Ruby/Sapphire)',
+        'formatos': {
+            'gen3ou': '[Gen 3] OverUsed',
+            'gen3ubers': '[Gen 3] Ubers',
+            'gen3uu': '[Gen 3] UnderUsed',
+            'gen3nu': '[Gen 3] NeverUsed',
+            'gen3lc': '[Gen 3] Little Cup',
+        }
+    },
+    'gen2': {
+        'nome': 'Geração 2 (Gold/Silver)',
+        'formatos': {
+            'gen2ou': '[Gen 2] OverUsed',
+            'gen2ubers': '[Gen 2] Ubers',
+            'gen2uu': '[Gen 2] UnderUsed',
+            'gen2nu': '[Gen 2] NeverUsed',
+        }
+    },
+    'gen1': {
+        'nome': 'Geração 1 (Red/Blue)',
+        'formatos': {
+            'gen1ou': '[Gen 1] OverUsed',
+            'gen1ubers': '[Gen 1] Ubers',
+            'gen1uu': '[Gen 1] UnderUsed',
+            'gen1nu': '[Gen 1] NeverUsed',
+        }
+    },
 }
 
+# Ratings especiais por formato
 DEFAULT_RATINGS = {
     'gen9ou': [0, 1500, 1695, 1825],
     'gen9doublesou': [0, 1500, 1695, 1825],
+    'gen8ou': [0, 1500, 1695, 1825],
+    'gen8doublesou': [0, 1500, 1695, 1825],
+    'gen7ou': [0, 1500, 1695, 1825],
+    'gen6ou': [0, 1500, 1695, 1825],
+    'gen5ou': [0, 1500, 1695, 1825],
+    'gen4ou': [0, 1500, 1695, 1825],
+    'gen3ou': [0, 1500, 1695, 1825],
+    'gen2ou': [0, 1500, 1695, 1825],
+    'gen1ou': [0, 1500, 1695, 1825],
     'default': [0, 1500, 1630, 1760]
 }
 
@@ -88,17 +241,26 @@ DEFAULT_RATINGS = {
 SPRITE_FIXES = {
     'Urshifu-Rapid-Strike': 'urshifu-rapid-strike',
     'Urshifu': 'urshifu',
+    'Urshifu-Single-Strike': 'urshifu',
+    'Ogerpon': 'ogerpon',
     'Ogerpon-Hearthflame': 'ogerpon-hearthflame',
     'Ogerpon-Wellspring': 'ogerpon-wellspring',
     'Ogerpon-Cornerstone': 'ogerpon-cornerstone',
+    'Terapagos': 'terapagos',
     'Terapagos-Stellar': 'terapagos-stellar',
+    'Terapagos-Terastal': 'terapagos-terastal',
     'Indeedee-F': 'indeedee-f',
+    'Basculegion': 'basculegion',
     'Basculegion-F': 'basculegion-f',
     'Oinkologne-F': 'oinkologne-f',
     'Meowstic-F': 'meowstic-f',
+    'Tornadus': 'tornadus',
     'Tornadus-Therian': 'tornadus-therian',
+    'Thundurus': 'thundurus',
     'Thundurus-Therian': 'thundurus-therian',
+    'Landorus': 'landorus',
     'Landorus-Therian': 'landorus-therian',
+    'Enamorus': 'enamorus',
     'Enamorus-Therian': 'enamorus-therian',
     'Raging Bolt': 'ragingbolt',
     'Iron Crown': 'ironcrown',
@@ -124,31 +286,57 @@ SPRITE_FIXES = {
     'Chien-Pao': 'chienpao',
     'Ting-Lu': 'tinglu',
     'Wo-Chien': 'wochien',
+    'Koraidon': 'koraidon',
+    'Miraidon': 'miraidon',
+    'Calyrex': 'calyrex',
+    'Calyrex-Ice': 'calyrex-ice',
+    'Calyrex-Shadow': 'calyrex-shadow',
+    'Zacian': 'zacian',
+    'Zacian-Crowned': 'zacian-crowned',
+    'Zamazenta': 'zamazenta',
+    'Zamazenta-Crowned': 'zamazenta-crowned',
+    'Kyurem': 'kyurem',
+    'Kyurem-Black': 'kyurem-black',
+    'Kyurem-White': 'kyurem-white',
+    'Necrozma': 'necrozma',
+    'Necrozma-Dusk-Mane': 'necrozma-dusk-mane',
+    'Necrozma-Dawn-Wings': 'necrozma-dawn-wings',
+    'Necrozma-Ultra': 'necrozma-ultra',
+    'Giratina': 'giratina',
+    'Giratina-Origin': 'giratina-origin',
+    'Deoxys': 'deoxys',
+    'Deoxys-Attack': 'deoxys-attack',
+    'Deoxys-Defense': 'deoxys-defense',
+    'Deoxys-Speed': 'deoxys-speed',
+    'Shaymin': 'shaymin',
+    'Shaymin-Sky': 'shaymin-sky',
+    'Hoopa': 'hoopa',
+    'Hoopa-Unbound': 'hoopa-unbound',
+    'Meloetta': 'meloetta',
+    'Meloetta-Pirouette': 'meloetta-pirouette',
+    'Keldeo': 'keldeo',
+    'Keldeo-Resolute': 'keldeo-resolute',
+    'Rotom': 'rotom',
+    'Rotom-Wash': 'rotom-wash',
+    'Rotom-Heat': 'rotom-heat',
+    'Rotom-Mow': 'rotom-mow',
+    'Rotom-Fan': 'rotom-fan',
+    'Rotom-Frost': 'rotom-frost',
+    'Wormadam': 'wormadam',
+    'Wormadam-Sandy': 'wormadam-sandy',
+    'Wormadam-Trash': 'wormadam-trash',
 }
-
-TERA_TYPES = [
-    'Normal', 'Fire', 'Water', 'Electric', 'Grass', 'Ice',
-    'Fighting', 'Poison', 'Ground', 'Flying', 'Psychic', 'Bug',
-    'Rock', 'Ghost', 'Dragon', 'Dark', 'Steel', 'Fairy', 'Stellar'
-]
-
-NATURES = [
-    'Adamant', 'Bashful', 'Bold', 'Brave', 'Calm', 'Careful', 'Docile',
-    'Gentle', 'Hardy', 'Hasty', 'Impish', 'Jolly', 'Lax', 'Lonely',
-    'Mild', 'Modest', 'Naive', 'Naughty', 'Quiet', 'Quirky', 'Rash',
-    'Relaxed', 'Sassy', 'Serious', 'Timid'
-]
 
 
 def get_sprite_name(pokemon_name):
     """Retorna o nome correto para o sprite"""
     if pokemon_name in SPRITE_FIXES:
         return SPRITE_FIXES[pokemon_name]
-    # Limpar nome para URL
     return pokemon_name.lower().replace(' ', '').replace('-', '').replace('.', '').replace(':', '').replace("'", '')
 
 
 def get_all_formats_flat():
+    """Retorna todos os formatos em um dicionário plano"""
     all_formats = {}
     for category in FORMATS.values():
         all_formats.update(category['formatos'])
@@ -156,6 +344,7 @@ def get_all_formats_flat():
 
 
 def get_ratings_for_format(format_code):
+    """Retorna ratings disponíveis para um formato"""
     if format_code in DEFAULT_RATINGS:
         return DEFAULT_RATINGS[format_code]
     return DEFAULT_RATINGS['default']
@@ -258,6 +447,16 @@ def process_pokemon_data(raw_json):
             if v > 0
         ]
 
+        # Checks and Counters
+        checks_raw = data.get('Checks and Counters', {})
+        checks = []
+        for check_name, check_data in sorted(checks_raw.items(), key=lambda x: x[1][1] if len(x[1]) > 1 else 0, reverse=True)[:10]:
+            if isinstance(check_data, list) and len(check_data) >= 2:
+                checks.append({
+                    'name': check_name,
+                    'score': round(check_data[1], 2) if check_data[1] else 0
+                })
+
         processed['pokemon'][pokemon_name] = {
             'name': pokemon_name,
             'sprite_name': get_sprite_name(pokemon_name),
@@ -270,6 +469,8 @@ def process_pokemon_data(raw_json):
             'spreads': spreads_processed,
             'teammates': teammates,
             'tera_types': calc_percentages(data.get('Tera Types', {})),
+            'checks': checks,
+            'happiness': data.get('Happiness', {}),
         }
 
     sorted_pokemon = sorted(
@@ -288,47 +489,8 @@ def process_pokemon_data(raw_json):
     return processed
 
 
-def generate_showdown_set(pokemon_data, pokemon_name, custom=None):
+def generate_showdown_set(pokemon_data, pokemon_name):
     """Gera set no formato Showdown"""
-    if custom:
-        lines = [pokemon_name]
-        if custom.get('item'):
-            lines[0] += f" @ {custom['item']}"
-        if custom.get('ability'):
-            lines.append(f"Ability: {custom['ability']}")
-        if custom.get('tera_type'):
-            lines.append(f"Tera Type: {custom['tera_type']}")
-        if custom.get('evs'):
-            evs = custom['evs']
-            evs_parts = []
-            if evs.get('hp', 0) > 0: evs_parts.append(f"{evs['hp']} HP")
-            if evs.get('atk', 0) > 0: evs_parts.append(f"{evs['atk']} Atk")
-            if evs.get('def', 0) > 0: evs_parts.append(f"{evs['def']} Def")
-            if evs.get('spa', 0) > 0: evs_parts.append(f"{evs['spa']} SpA")
-            if evs.get('spd', 0) > 0: evs_parts.append(f"{evs['spd']} SpD")
-            if evs.get('spe', 0) > 0: evs_parts.append(f"{evs['spe']} Spe")
-            if evs_parts:
-                lines.append(f"EVs: {' / '.join(evs_parts)}")
-        if custom.get('ivs'):
-            ivs = custom['ivs']
-            ivs_parts = []
-            if ivs.get('hp', 31) < 31: ivs_parts.append(f"{ivs['hp']} HP")
-            if ivs.get('atk', 31) < 31: ivs_parts.append(f"{ivs['atk']} Atk")
-            if ivs.get('def', 31) < 31: ivs_parts.append(f"{ivs['def']} Def")
-            if ivs.get('spa', 31) < 31: ivs_parts.append(f"{ivs['spa']} SpA")
-            if ivs.get('spd', 31) < 31: ivs_parts.append(f"{ivs['spd']} SpD")
-            if ivs.get('spe', 31) < 31: ivs_parts.append(f"{ivs['spe']} Spe")
-            if ivs_parts:
-                lines.append(f"IVs: {' / '.join(ivs_parts)}")
-        if custom.get('nature'):
-            lines.append(f"{custom['nature']} Nature")
-        if custom.get('moves'):
-            for move in custom['moves'][:4]:
-                if move:
-                    lines.append(f"- {move}")
-        return '\n'.join(lines)
-
-    # Default: usa dados mais populares
     lines = [pokemon_name]
 
     if pokemon_data.get('items'):
@@ -394,12 +556,10 @@ def parse_team_from_log(log, player_num):
     team = []
     player_prefix = f"p{player_num}"
 
-    # Primeiro, tentar extrair do team preview (|poke|)
     poke_pattern = rf'\|poke\|{player_prefix}\|([^|]+)\|'
     poke_matches = re.findall(poke_pattern, log)
 
     for match in poke_matches:
-        # Parse: "Pokemon, L50, M" ou "Pokemon, L50, F" ou "Pokemon, L50"
         parts = match.split(',')
         pokemon_name = parts[0].strip()
         level = 50
@@ -426,16 +586,10 @@ def parse_team_from_log(log, player_num):
             'moves': []
         })
 
-    # Extrair items dos switches (|switch|p1a: Nickname|Pokemon, L50, M|HP)
-    # E também de |-item| eventos
-    item_pattern = rf'\|-item\|{player_prefix}[ab]: [^|]+\|([^|]+)'
-    item_matches = re.findall(item_pattern, log)
-
     # Extrair abilities
     ability_pattern = rf'\|-ability\|{player_prefix}[ab]: ([^|]+)\|([^|]+)'
     ability_matches = re.findall(ability_pattern, log)
     for nickname, ability in ability_matches:
-        # Tentar associar ao Pokemon
         for poke in team:
             if nickname.lower() in poke['name'].lower() or poke['name'].lower() in nickname.lower():
                 poke['ability'] = ability
@@ -484,7 +638,7 @@ def generate_team_export(team):
         for move in poke.get('moves', []):
             lines.append(f"- {move}")
 
-        lines.append("")  # Linha em branco entre Pokemon
+        lines.append("")
 
     return '\n'.join(lines)
 
@@ -499,8 +653,6 @@ def index():
 @app.route('/format/<format_code>')
 def format_page(format_code):
     all_formats = get_all_formats_flat()
-
-    # Permitir qualquer formato (não só os listados)
     format_name = all_formats.get(format_code, format_code)
     ratings = get_ratings_for_format(format_code)
     months = get_available_months()
@@ -525,16 +677,8 @@ def pokemon_page(format_code, pokemon_name):
         format_code=format_code,
         format_name=format_name,
         pokemon_name=pokemon_name,
-        formats=FORMATS,
-        tera_types=TERA_TYPES,
-        natures=NATURES
+        formats=FORMATS
     )
-
-
-@app.route('/builder')
-def builder_page():
-    """Team Builder"""
-    return render_template('builder.html', formats=FORMATS, tera_types=TERA_TYPES, natures=NATURES)
 
 
 @app.route('/replays')
@@ -542,7 +686,7 @@ def builder_page():
 def replays_page(format_code=None):
     """Página de Replays"""
     if not format_code:
-        format_code = 'gen9vgc2025regh'
+        format_code = 'gen9vgc2026regf'
     all_formats = get_all_formats_flat()
     format_name = all_formats.get(format_code, format_code)
     return render_template('replays.html', formats=FORMATS, format_code=format_code, format_name=format_name)
@@ -627,90 +771,6 @@ def api_pokemon(format_code, pokemon_name):
     return jsonify(pokemon_data)
 
 
-@app.route('/api/build', methods=['POST'])
-def api_build():
-    """Gera set customizado"""
-    data = request.json
-    pokemon_name = data.get('pokemon', '')
-    custom = data.get('custom', {})
-
-    showdown_set = generate_showdown_set(None, pokemon_name, custom)
-    return jsonify({'set': showdown_set})
-
-
-@app.route('/api/suggest-team', methods=['POST'])
-def api_suggest_team():
-    """Sugere complementos para o time usando Gemini"""
-    if not GEMINI_API_KEY:
-        return jsonify({'error': 'API key não configurada. Adicione GEMINI_API_KEY nas variáveis de ambiente.'}), 400
-
-    data = request.json
-    current_team = data.get('team', [])
-    format_code = data.get('format', 'gen9vgc2025regh')
-
-    if len(current_team) >= 6:
-        return jsonify({'error': 'Time já está completo'}), 400
-
-    # Montar prompt
-    team_str = ', '.join([p.get('name', '') for p in current_team if p.get('name')])
-    slots_left = 6 - len(current_team)
-
-    prompt = f"""Você é um especialista em Pokemon VGC competitivo.
-
-O jogador está montando um time para o formato {format_code} e já tem: {team_str if team_str else 'nenhum Pokemon ainda'}.
-
-Sugira {slots_left} Pokemon para completar o time, considerando:
-- Sinergia com os Pokemon existentes
-- Cobertura de tipos
-- Roles necessários (suporte, atacante físico/especial, controle de velocidade, etc)
-- Meta atual do formato
-
-Responda em português brasileiro, em formato JSON com esta estrutura:
-{{
-    "sugestoes": [
-        {{
-            "pokemon": "Nome do Pokemon",
-            "motivo": "Breve explicação de por que ele complementa o time",
-            "role": "Papel no time (ex: Suporte, Sweeper, Tank, etc)"
-        }}
-    ],
-    "dica_geral": "Uma dica sobre a estratégia geral do time"
-}}"""
-
-    try:
-        response = requests.post(
-            f'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}',
-            headers={'Content-Type': 'application/json'},
-            json={
-                'contents': [{'parts': [{'text': prompt}]}],
-                'generationConfig': {
-                    'temperature': 0.7,
-                    'maxOutputTokens': 1024
-                }
-            },
-            timeout=30
-        )
-        response.raise_for_status()
-
-        result = response.json()
-        content = result['candidates'][0]['content']['parts'][0]['text']
-
-        # Tentar parsear JSON da resposta
-        try:
-            # Encontrar JSON na resposta
-            json_match = re.search(r'\{[\s\S]*\}', content)
-            if json_match:
-                suggestions = json.loads(json_match.group())
-                return jsonify(suggestions)
-        except:
-            pass
-
-        return jsonify({'raw_response': content})
-
-    except Exception as e:
-        return jsonify({'error': f'Erro ao consultar Gemini: {str(e)}'}), 500
-
-
 # ==================== API REPLAYS ====================
 
 @app.route('/api/replays/<format_code>')
@@ -719,7 +779,6 @@ def api_replays(format_code):
     page = request.args.get('page', 1, type=int)
     replays = fetch_replays(format_code, page)
 
-    # Limitar a 20 replays
     if isinstance(replays, list):
         replays = replays[:20]
 
@@ -735,12 +794,8 @@ def api_replay_detail(replay_id):
         return jsonify({'error': 'Replay não encontrado'}), 404
 
     log = replay.get('log', '')
-
-    # Extrair times dos dois jogadores
     team1 = parse_team_from_log(log, 1)
     team2 = parse_team_from_log(log, 2)
-
-    # Gerar exports
     export1 = generate_team_export(team1)
     export2 = generate_team_export(team2)
 
@@ -770,12 +825,11 @@ def api_analyze_team():
 
     data = request.json
     team = data.get('team', [])
-    format_code = data.get('format', 'gen9vgc2025regh')
+    format_code = data.get('format', 'gen9vgc2026regf')
 
     if not team:
         return jsonify({'error': 'Time vazio'}), 400
 
-    # Montar descrição do time
     team_desc = []
     for poke in team:
         desc = poke.get('name', 'Unknown')
@@ -786,8 +840,6 @@ def api_analyze_team():
         team_desc.append(desc)
 
     team_str = '\n'.join(team_desc)
-
-    # Determinar se é VGC ou outro formato
     is_vgc = 'vgc' in format_code.lower() or 'doubles' in format_code.lower()
     format_type = "VGC (doubles)" if is_vgc else "Singles"
 
@@ -799,24 +851,15 @@ Analise este time de {format_type} ({format_code}) e explique como jogar com ele
 
 Forneça uma análise detalhada em português brasileiro incluindo:
 
-1. **Visão Geral do Time**: Qual é o arquétipo/estilo do time (offense, balance, stall, trick room, tailwind, etc)
-
+1. **Visão Geral do Time**: Qual é o arquétipo/estilo do time
 2. **Win Conditions**: Quais são as condições de vitória principais
+3. **Leads Recomendados**: Quais Pokemon devem começar na frente
+4. **Synergias Importantes**: Quais combinações funcionam bem
+5. **Ameaças e Counters**: Pokemon/estratégias perigosas e como lidar
+6. **Dicas de Gameplay**: Quando usar Tera, prioridade de knockouts
+7. **Matchups Difíceis**: Times que dão problema e como jogar contra
 
-3. **Leads Recomendados**: Quais Pokemon devem começar na frente e por quê {"(lembre-se que em VGC você leva 4 dos 6)" if is_vgc else ""}
-
-4. **Synergias Importantes**: Quais combinações de Pokemon funcionam bem juntas
-
-5. **Ameaças e Counters**: Quais Pokemon/estratégias do meta são perigosas para este time e como lidar
-
-6. **Dicas de Gameplay**:
-   - Quando usar Tera e em quem
-   - Ordem de prioridade de knockouts
-   - Posicionamento e proteção de Pokemon chave
-
-7. **Matchups Difíceis**: Times ou cores que dão problema e como jogar contra
-
-Seja específico e prático, dando conselhos que podem ser aplicados imediatamente."""
+Seja específico e prático."""
 
     try:
         response = requests.post(
@@ -824,20 +867,14 @@ Seja específico e prático, dando conselhos que podem ser aplicados imediatamen
             headers={'Content-Type': 'application/json'},
             json={
                 'contents': [{'parts': [{'text': prompt}]}],
-                'generationConfig': {
-                    'temperature': 0.7,
-                    'maxOutputTokens': 2048
-                }
+                'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 2048}
             },
             timeout=60
         )
         response.raise_for_status()
-
         result = response.json()
         content = result['candidates'][0]['content']['parts'][0]['text']
-
         return jsonify({'analysis': content, 'format': format_code})
-
     except Exception as e:
         return jsonify({'error': f'Erro ao analisar time: {str(e)}'}), 500
 
