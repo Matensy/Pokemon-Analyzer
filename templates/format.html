@@ -59,7 +59,7 @@
     }
 
     .pokemon-rank { font-weight: 700; color: var(--text-muted); min-width: 36px; }
-    .pokemon-sprite { width: 56px; height: 56px; image-rendering: pixelated; }
+    .pokemon-sprite { width: 56px; height: 56px; image-rendering: pixelated; background: var(--bg-secondary); border-radius: 8px; }
     .pokemon-info { flex: 1; }
     .pokemon-name { font-weight: 600; display: block; margin-bottom: 0.25rem; }
 
@@ -133,8 +133,30 @@
     const FORMAT_CODE = "{{ format_code }}";
     let currentData = null;
 
-    function getSprite(name) {
-        return `https://play.pokemonshowdown.com/sprites/gen5/${name.toLowerCase().replace(/[^a-z0-9]/g, '')}.png`;
+    // Múltiplos fallbacks para sprites
+    function getSprite(name, spriteName) {
+        // Usa sprite_name do backend se disponível
+        const cleanName = spriteName || name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return `https://play.pokemonshowdown.com/sprites/gen5/${cleanName}.png`;
+    }
+
+    function handleSpriteError(img, pokemonName) {
+        // Fallback 1: tentar com nome limpo diferente
+        const alt1 = pokemonName.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-');
+        if (!img.dataset.tried1) {
+            img.dataset.tried1 = '1';
+            img.src = `https://play.pokemonshowdown.com/sprites/gen5/${alt1}.png`;
+            return;
+        }
+        // Fallback 2: PokeAPI
+        const alt2 = pokemonName.toLowerCase().replace(/[^a-z0-9-]/g, '');
+        if (!img.dataset.tried2) {
+            img.dataset.tried2 = '1';
+            img.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${alt2}.png`;
+            return;
+        }
+        // Fallback final: placeholder
+        img.style.opacity = '0.3';
     }
 
     function formatNumber(n) {
@@ -144,10 +166,14 @@
     function createCard(p) {
         const rating = document.getElementById('rating-select').value;
         const month = document.getElementById('month-select').value;
+        const sprite = getSprite(p.name, p.sprite_name);
+
         return `
             <a href="/pokemon/${FORMAT_CODE}/${encodeURIComponent(p.name)}?rating=${rating}&month=${month}" class="pokemon-card">
                 <div class="pokemon-rank">#${p.rank}</div>
-                <img src="${getSprite(p.name)}" class="pokemon-sprite" onerror="this.style.opacity='0.3'">
+                <img src="${sprite}" class="pokemon-sprite"
+                     data-name="${p.name}"
+                     onerror="handleSpriteError(this, '${p.name.replace(/'/g, "\\'")}')">
                 <div class="pokemon-info">
                     <span class="pokemon-name">${p.name}</span>
                     <div class="pokemon-usage">
@@ -171,7 +197,7 @@
         if (list.length === 0) {
             container.innerHTML = '<p class="no-results">Nenhum Pokémon encontrado.</p>';
         } else {
-            container.innerHTML = list.map(p => createCard(data.pokemon[p.name])).join('');
+            container.innerHTML = list.map(p => createCard(p)).join('');
         }
     }
 
@@ -185,7 +211,10 @@
 
         try {
             const res = await fetch(`/api/stats/${FORMAT_CODE}?rating=${rating}&month=${month}`);
-            if (!res.ok) throw new Error('Erro ' + res.status);
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Erro ' + res.status);
+            }
 
             currentData = await res.json();
 
@@ -200,7 +229,7 @@
         } catch (e) {
             console.error(e);
             document.getElementById('loading').classList.add('hidden');
-            document.getElementById('error-msg').textContent = 'Erro ao carregar dados: ' + e.message;
+            document.getElementById('error-msg').textContent = e.message;
             document.getElementById('error').classList.remove('hidden');
         }
     }

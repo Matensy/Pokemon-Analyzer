@@ -12,12 +12,17 @@ app = Flask(__name__)
 
 BASE_STATS_URL = "https://www.smogon.com/stats"
 
+# Chave da API Anthropic (opcional - para sugestões de time)
+ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
+
 FORMATS = {
     'vgc': {
         'nome': 'VGC (Doubles Oficial)',
         'formatos': {
             'gen9vgc2025regh': '[Gen 9] VGC 2025 Reg H',
-            'gen9vgc2025regg': '[Gen 9] VGC 2025 Reg G',
+            'gen9vgc2025reggbo3': '[Gen 9] VGC 2025 Reg G Bo3',
+            'gen9vgc2026regg': '[Gen 9] VGC 2026 Reg G',
+            'gen9vgc2026reggbo3': '[Gen 9] VGC 2026 Reg G Bo3',
         }
     },
     'singles': {
@@ -75,6 +80,69 @@ DEFAULT_RATINGS = {
     'default': [0, 1500, 1630, 1760]
 }
 
+# Mapeamento de nomes para sprites (casos especiais)
+SPRITE_FIXES = {
+    'Urshifu-Rapid-Strike': 'urshifu-rapid-strike',
+    'Urshifu': 'urshifu',
+    'Ogerpon-Hearthflame': 'ogerpon-hearthflame',
+    'Ogerpon-Wellspring': 'ogerpon-wellspring',
+    'Ogerpon-Cornerstone': 'ogerpon-cornerstone',
+    'Terapagos-Stellar': 'terapagos-stellar',
+    'Indeedee-F': 'indeedee-f',
+    'Basculegion-F': 'basculegion-f',
+    'Oinkologne-F': 'oinkologne-f',
+    'Meowstic-F': 'meowstic-f',
+    'Tornadus-Therian': 'tornadus-therian',
+    'Thundurus-Therian': 'thundurus-therian',
+    'Landorus-Therian': 'landorus-therian',
+    'Enamorus-Therian': 'enamorus-therian',
+    'Raging Bolt': 'ragingbolt',
+    'Iron Crown': 'ironcrown',
+    'Iron Boulder': 'ironboulder',
+    'Gouging Fire': 'gougingfire',
+    'Walking Wake': 'walkingwake',
+    'Iron Leaves': 'ironleaves',
+    'Iron Hands': 'ironhands',
+    'Iron Bundle': 'ironbundle',
+    'Iron Jugulis': 'ironjugulis',
+    'Iron Moth': 'ironmoth',
+    'Iron Thorns': 'ironthorns',
+    'Iron Valiant': 'ironvaliant',
+    'Iron Treads': 'irontreads',
+    'Roaring Moon': 'roaringmoon',
+    'Flutter Mane': 'fluttermane',
+    'Sandy Shocks': 'sandyshocks',
+    'Scream Tail': 'screamtail',
+    'Brute Bonnet': 'brutebonnet',
+    'Slither Wing': 'slitherwing',
+    'Great Tusk': 'greattusk',
+    'Chi-Yu': 'chiyu',
+    'Chien-Pao': 'chienpao',
+    'Ting-Lu': 'tinglu',
+    'Wo-Chien': 'wochien',
+}
+
+TERA_TYPES = [
+    'Normal', 'Fire', 'Water', 'Electric', 'Grass', 'Ice',
+    'Fighting', 'Poison', 'Ground', 'Flying', 'Psychic', 'Bug',
+    'Rock', 'Ghost', 'Dragon', 'Dark', 'Steel', 'Fairy', 'Stellar'
+]
+
+NATURES = [
+    'Adamant', 'Bashful', 'Bold', 'Brave', 'Calm', 'Careful', 'Docile',
+    'Gentle', 'Hardy', 'Hasty', 'Impish', 'Jolly', 'Lax', 'Lonely',
+    'Mild', 'Modest', 'Naive', 'Naughty', 'Quiet', 'Quirky', 'Rash',
+    'Relaxed', 'Sassy', 'Serious', 'Timid'
+]
+
+
+def get_sprite_name(pokemon_name):
+    """Retorna o nome correto para o sprite"""
+    if pokemon_name in SPRITE_FIXES:
+        return SPRITE_FIXES[pokemon_name]
+    # Limpar nome para URL
+    return pokemon_name.lower().replace(' ', '').replace('-', '').replace('.', '').replace(':', '').replace("'", '')
+
 
 def get_all_formats_flat():
     all_formats = {}
@@ -100,6 +168,19 @@ def get_available_months():
         return months
     except Exception as e:
         print(f"Erro ao buscar meses: {e}")
+        return []
+
+
+def get_available_formats_for_month(month):
+    """Lista os formatos disponíveis em um mês específico"""
+    try:
+        response = requests.get(f"{BASE_STATS_URL}/{month}/chaos/", timeout=10)
+        response.raise_for_status()
+        pattern = r'href="([a-z0-9]+)-\d+\.json"'
+        formats = re.findall(pattern, response.text)
+        return list(set(formats))
+    except Exception as e:
+        print(f"Erro ao buscar formatos: {e}")
         return []
 
 
@@ -175,12 +256,13 @@ def process_pokemon_data(raw_json):
 
         processed['pokemon'][pokemon_name] = {
             'name': pokemon_name,
+            'sprite_name': get_sprite_name(pokemon_name),
             'usage': round(usage, 2),
             'raw_count': data.get('Raw count', 0),
             'viability': data.get('Viability Ceiling', []),
             'abilities': calc_percentages(data.get('Abilities', {})),
-            'items': calc_percentages(data.get('Items', {}), 10),
-            'moves': calc_percentages(data.get('Moves', {}), 10),
+            'items': calc_percentages(data.get('Items', {}), 15),
+            'moves': calc_percentages(data.get('Moves', {}), 15),
             'spreads': spreads_processed,
             'teammates': teammates,
             'tera_types': calc_percentages(data.get('Tera Types', {})),
@@ -195,14 +277,54 @@ def process_pokemon_data(raw_json):
         processed['pokemon'][name]['rank'] = rank
 
     processed['ranked_list'] = [
-        {'name': name, 'usage': data['usage'], 'rank': data['rank']}
+        {'name': name, 'usage': data['usage'], 'rank': data['rank'], 'sprite_name': data['sprite_name']}
         for name, data in sorted_pokemon
     ]
 
     return processed
 
 
-def generate_showdown_set(pokemon_data, pokemon_name):
+def generate_showdown_set(pokemon_data, pokemon_name, custom=None):
+    """Gera set no formato Showdown"""
+    if custom:
+        lines = [pokemon_name]
+        if custom.get('item'):
+            lines[0] += f" @ {custom['item']}"
+        if custom.get('ability'):
+            lines.append(f"Ability: {custom['ability']}")
+        if custom.get('tera_type'):
+            lines.append(f"Tera Type: {custom['tera_type']}")
+        if custom.get('evs'):
+            evs = custom['evs']
+            evs_parts = []
+            if evs.get('hp', 0) > 0: evs_parts.append(f"{evs['hp']} HP")
+            if evs.get('atk', 0) > 0: evs_parts.append(f"{evs['atk']} Atk")
+            if evs.get('def', 0) > 0: evs_parts.append(f"{evs['def']} Def")
+            if evs.get('spa', 0) > 0: evs_parts.append(f"{evs['spa']} SpA")
+            if evs.get('spd', 0) > 0: evs_parts.append(f"{evs['spd']} SpD")
+            if evs.get('spe', 0) > 0: evs_parts.append(f"{evs['spe']} Spe")
+            if evs_parts:
+                lines.append(f"EVs: {' / '.join(evs_parts)}")
+        if custom.get('ivs'):
+            ivs = custom['ivs']
+            ivs_parts = []
+            if ivs.get('hp', 31) < 31: ivs_parts.append(f"{ivs['hp']} HP")
+            if ivs.get('atk', 31) < 31: ivs_parts.append(f"{ivs['atk']} Atk")
+            if ivs.get('def', 31) < 31: ivs_parts.append(f"{ivs['def']} Def")
+            if ivs.get('spa', 31) < 31: ivs_parts.append(f"{ivs['spa']} SpA")
+            if ivs.get('spd', 31) < 31: ivs_parts.append(f"{ivs['spd']} SpD")
+            if ivs.get('spe', 31) < 31: ivs_parts.append(f"{ivs['spe']} Spe")
+            if ivs_parts:
+                lines.append(f"IVs: {' / '.join(ivs_parts)}")
+        if custom.get('nature'):
+            lines.append(f"{custom['nature']} Nature")
+        if custom.get('moves'):
+            for move in custom['moves'][:4]:
+                if move:
+                    lines.append(f"- {move}")
+        return '\n'.join(lines)
+
+    # Default: usa dados mais populares
     lines = [pokemon_name]
 
     if pokemon_data.get('items'):
@@ -217,18 +339,12 @@ def generate_showdown_set(pokemon_data, pokemon_name):
     if pokemon_data.get('spreads'):
         spread = pokemon_data['spreads'][0]
         evs_parts = []
-        if spread['hp'] > 0:
-            evs_parts.append(f"{spread['hp']} HP")
-        if spread['atk'] > 0:
-            evs_parts.append(f"{spread['atk']} Atk")
-        if spread['def'] > 0:
-            evs_parts.append(f"{spread['def']} Def")
-        if spread['spa'] > 0:
-            evs_parts.append(f"{spread['spa']} SpA")
-        if spread['spd'] > 0:
-            evs_parts.append(f"{spread['spd']} SpD")
-        if spread['spe'] > 0:
-            evs_parts.append(f"{spread['spe']} Spe")
+        if spread['hp'] > 0: evs_parts.append(f"{spread['hp']} HP")
+        if spread['atk'] > 0: evs_parts.append(f"{spread['atk']} Atk")
+        if spread['def'] > 0: evs_parts.append(f"{spread['def']} Def")
+        if spread['spa'] > 0: evs_parts.append(f"{spread['spa']} SpA")
+        if spread['spd'] > 0: evs_parts.append(f"{spread['spd']} SpD")
+        if spread['spe'] > 0: evs_parts.append(f"{spread['spe']} Spe")
         if evs_parts:
             lines.append(f"EVs: {' / '.join(evs_parts)}")
         lines.append(f"{spread['nature']} Nature")
@@ -250,10 +366,9 @@ def index():
 @app.route('/format/<format_code>')
 def format_page(format_code):
     all_formats = get_all_formats_flat()
-    if format_code not in all_formats:
-        abort(404)
 
-    format_name = all_formats[format_code]
+    # Permitir qualquer formato (não só os listados)
+    format_name = all_formats.get(format_code, format_code)
     ratings = get_ratings_for_format(format_code)
     months = get_available_months()
 
@@ -270,18 +385,23 @@ def format_page(format_code):
 @app.route('/pokemon/<format_code>/<pokemon_name>')
 def pokemon_page(format_code, pokemon_name):
     all_formats = get_all_formats_flat()
-    if format_code not in all_formats:
-        abort(404)
-
-    format_name = all_formats[format_code]
+    format_name = all_formats.get(format_code, format_code)
 
     return render_template(
         'pokemon.html',
         format_code=format_code,
         format_name=format_name,
         pokemon_name=pokemon_name,
-        formats=FORMATS
+        formats=FORMATS,
+        tera_types=TERA_TYPES,
+        natures=NATURES
     )
+
+
+@app.route('/builder')
+def builder_page():
+    """Team Builder"""
+    return render_template('builder.html', formats=FORMATS, tera_types=TERA_TYPES, natures=NATURES)
 
 
 @app.route('/about')
@@ -295,6 +415,13 @@ def about():
 def api_months():
     months = get_available_months()
     return jsonify({'months': months})
+
+
+@app.route('/api/formats/<month>')
+def api_formats_for_month(month):
+    """Lista formatos disponíveis em um mês"""
+    formats = get_available_formats_for_month(month)
+    return jsonify({'formats': formats})
 
 
 @app.route('/api/stats/<format_code>')
@@ -311,7 +438,7 @@ def api_stats(format_code):
 
     raw_data = fetch_smogon_data(format_code, rating, month)
     if not raw_data:
-        return jsonify({'error': 'Dados não encontrados'}), 404
+        return jsonify({'error': f'Dados não encontrados para {format_code} rating {rating} em {month}'}), 404
 
     data = process_pokemon_data(raw_data)
     if not data:
@@ -354,6 +481,93 @@ def api_pokemon(format_code, pokemon_name):
     pokemon_data['meta'] = {'format': format_code, 'rating': rating, 'month': month}
 
     return jsonify(pokemon_data)
+
+
+@app.route('/api/build', methods=['POST'])
+def api_build():
+    """Gera set customizado"""
+    data = request.json
+    pokemon_name = data.get('pokemon', '')
+    custom = data.get('custom', {})
+
+    showdown_set = generate_showdown_set(None, pokemon_name, custom)
+    return jsonify({'set': showdown_set})
+
+
+@app.route('/api/suggest-team', methods=['POST'])
+def api_suggest_team():
+    """Sugere complementos para o time usando LLM"""
+    if not ANTHROPIC_API_KEY:
+        return jsonify({'error': 'API key não configurada. Adicione ANTHROPIC_API_KEY nas variáveis de ambiente.'}), 400
+
+    data = request.json
+    current_team = data.get('team', [])
+    format_code = data.get('format', 'gen9vgc2025regh')
+
+    if len(current_team) >= 6:
+        return jsonify({'error': 'Time já está completo'}), 400
+
+    # Montar prompt
+    team_str = ', '.join([p.get('name', '') for p in current_team if p.get('name')])
+    slots_left = 6 - len(current_team)
+
+    prompt = f"""Você é um especialista em Pokemon VGC competitivo.
+
+O jogador está montando um time para o formato {format_code} e já tem: {team_str if team_str else 'nenhum Pokemon ainda'}.
+
+Sugira {slots_left} Pokemon para completar o time, considerando:
+- Sinergia com os Pokemon existentes
+- Cobertura de tipos
+- Roles necessários (suporte, atacante físico/especial, controle de velocidade, etc)
+- Meta atual do formato
+
+Responda em português brasileiro, em formato JSON com esta estrutura:
+{{
+    "sugestoes": [
+        {{
+            "pokemon": "Nome do Pokemon",
+            "motivo": "Breve explicação de por que ele complementa o time",
+            "role": "Papel no time (ex: Suporte, Sweeper, Tank, etc)"
+        }}
+    ],
+    "dica_geral": "Uma dica sobre a estratégia geral do time"
+}}"""
+
+    try:
+        response = requests.post(
+            'https://api.anthropic.com/v1/messages',
+            headers={
+                'Content-Type': 'application/json',
+                'x-api-key': ANTHROPIC_API_KEY,
+                'anthropic-version': '2023-06-01'
+            },
+            json={
+                'model': 'claude-3-haiku-20240307',
+                'max_tokens': 1024,
+                'messages': [{'role': 'user', 'content': prompt}]
+            },
+            timeout=30
+        )
+        response.raise_for_status()
+
+        result = response.json()
+        content = result['content'][0]['text']
+
+        # Tentar parsear JSON da resposta
+        import json
+        try:
+            # Encontrar JSON na resposta
+            json_match = re.search(r'\{[\s\S]*\}', content)
+            if json_match:
+                suggestions = json.loads(json_match.group())
+                return jsonify(suggestions)
+        except:
+            pass
+
+        return jsonify({'raw_response': content})
+
+    except Exception as e:
+        return jsonify({'error': f'Erro ao consultar LLM: {str(e)}'}), 500
 
 
 @app.errorhandler(404)

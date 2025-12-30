@@ -18,11 +18,13 @@
         border-bottom: 1px solid var(--border-color);
     }
     .pokemon-header-main { display: flex; align-items: center; gap: 1.5rem; }
-    .pokemon-sprite-large { width: 96px; height: 96px; image-rendering: pixelated; }
+    .pokemon-sprite-large { width: 96px; height: 96px; image-rendering: pixelated; background: var(--bg-secondary); border-radius: 12px; }
     .pokemon-title { font-size: 2rem; }
     .pokemon-meta { display: flex; gap: 1.5rem; margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-secondary); }
     .meta-rank { color: var(--secondary); font-weight: 600; }
     .meta-usage { color: var(--primary); font-weight: 600; }
+
+    .header-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 
     .stats-grid {
         display: grid;
@@ -43,7 +45,9 @@
         border-bottom: 1px solid var(--border-color);
     }
 
-    .stat-item { margin-bottom: 0.75rem; }
+    .stat-item { margin-bottom: 0.75rem; cursor: pointer; padding: 0.25rem; border-radius: 4px; transition: background 0.2s; }
+    .stat-item:hover { background: var(--bg-secondary); }
+    .stat-item.selected { background: rgba(0, 156, 59, 0.2); border-left: 3px solid var(--primary); }
     .stat-header { display: flex; justify-content: space-between; font-size: 0.875rem; margin-bottom: 0.25rem; }
     .stat-bar { height: 8px; background: var(--bg-secondary); border-radius: 4px; overflow: hidden; }
     .stat-fill { height: 100%; background: var(--primary); border-radius: 4px; }
@@ -55,7 +59,11 @@
         font-size: 0.8rem;
         font-weight: 500;
         color: white;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
     }
+    .tera-badge:hover { transform: scale(1.05); }
+    .tera-badge.selected { box-shadow: 0 0 0 3px var(--secondary); }
 
     .spreads-section, .teammates-section { grid-column: 1 / -1; }
 
@@ -68,7 +76,12 @@
         background: var(--bg-secondary);
         border-radius: 8px;
         padding: 1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 2px solid transparent;
     }
+    .spread-card:hover { border-color: var(--primary); }
+    .spread-card.selected { border-color: var(--primary); background: rgba(0, 156, 59, 0.1); }
     .spread-nature { font-weight: 600; color: var(--primary); }
     .spread-percentage { font-size: 0.75rem; color: var(--text-muted); float: right; }
     .spread-evs { font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem; font-family: monospace; }
@@ -92,6 +105,72 @@
     .teammate-sprite { width: 48px; height: 48px; image-rendering: pixelated; }
     .teammate-name { font-size: 0.8rem; text-align: center; margin-top: 0.5rem; }
     .teammate-score { font-size: 0.75rem; color: var(--primary); }
+
+    /* Builder Section */
+    .builder-section {
+        grid-column: 1 / -1;
+        background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
+        border: 2px solid var(--primary);
+    }
+    .builder-section .stats-section-title { color: var(--primary); }
+
+    .builder-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .builder-group label {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+    }
+
+    .builder-select {
+        width: 100%;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        padding: 0.75rem;
+        font-size: 0.875rem;
+    }
+
+    .ev-inputs {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.5rem;
+    }
+    .ev-input-group { text-align: center; }
+    .ev-input-group span { display: block; font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+    .ev-input {
+        width: 100%;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        color: var(--text-primary);
+        padding: 0.5rem;
+        text-align: center;
+        font-size: 0.875rem;
+    }
+    .ev-total { text-align: center; margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted); }
+    .ev-total.over { color: #ff4444; }
+
+    .moves-inputs { display: flex; flex-direction: column; gap: 0.5rem; }
+
+    .export-preview {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1rem;
+        font-family: monospace;
+        font-size: 0.8rem;
+        white-space: pre-wrap;
+        max-height: 200px;
+        overflow-y: auto;
+    }
 
     .modal {
         position: fixed;
@@ -161,35 +240,128 @@
                     </div>
                 </div>
             </div>
-            <button id="export-btn" class="btn">Exportar para Showdown</button>
+            <div class="header-actions">
+                <button id="export-btn" class="btn">Exportar Set Padrão</button>
+                <button id="export-custom-btn" class="btn" style="background: var(--secondary); color: #000;">Exportar Customizado</button>
+            </div>
         </header>
 
         <div class="stats-grid">
+            <!-- Builder Section -->
+            <section class="stats-section builder-section">
+                <h2 class="stats-section-title">Construir Set Customizado</h2>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                    Clique nos itens abaixo para selecionar, ou customize manualmente:
+                </p>
+
+                <div class="builder-grid">
+                    <div class="builder-group">
+                        <label>Item</label>
+                        <select id="build-item" class="builder-select">
+                            <option value="">-- Selecione --</option>
+                        </select>
+                    </div>
+
+                    <div class="builder-group">
+                        <label>Ability</label>
+                        <select id="build-ability" class="builder-select">
+                            <option value="">-- Selecione --</option>
+                        </select>
+                    </div>
+
+                    <div class="builder-group">
+                        <label>Tera Type</label>
+                        <select id="build-tera" class="builder-select">
+                            <option value="">-- Selecione --</option>
+                            {% for tera in tera_types %}
+                            <option value="{{ tera }}">{{ tera }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="builder-group">
+                        <label>Nature</label>
+                        <select id="build-nature" class="builder-select">
+                            <option value="">-- Selecione --</option>
+                            {% for nature in natures %}
+                            <option value="{{ nature }}">{{ nature }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="builder-group">
+                        <label>EVs (Total: 510)</label>
+                        <div class="ev-inputs">
+                            <div class="ev-input-group"><span>HP</span><input type="number" id="ev-hp" class="ev-input" min="0" max="252" value="0"></div>
+                            <div class="ev-input-group"><span>Atk</span><input type="number" id="ev-atk" class="ev-input" min="0" max="252" value="0"></div>
+                            <div class="ev-input-group"><span>Def</span><input type="number" id="ev-def" class="ev-input" min="0" max="252" value="0"></div>
+                            <div class="ev-input-group"><span>SpA</span><input type="number" id="ev-spa" class="ev-input" min="0" max="252" value="0"></div>
+                            <div class="ev-input-group"><span>SpD</span><input type="number" id="ev-spd" class="ev-input" min="0" max="252" value="0"></div>
+                            <div class="ev-input-group"><span>Spe</span><input type="number" id="ev-spe" class="ev-input" min="0" max="252" value="0"></div>
+                        </div>
+                        <div id="ev-total" class="ev-total">Total: 0/510</div>
+                    </div>
+
+                    <div class="builder-group">
+                        <label>IVs (0-31, deixe 31 para omitir)</label>
+                        <div class="ev-inputs">
+                            <div class="ev-input-group"><span>HP</span><input type="number" id="iv-hp" class="ev-input" min="0" max="31" value="31"></div>
+                            <div class="ev-input-group"><span>Atk</span><input type="number" id="iv-atk" class="ev-input" min="0" max="31" value="31"></div>
+                            <div class="ev-input-group"><span>Def</span><input type="number" id="iv-def" class="ev-input" min="0" max="31" value="31"></div>
+                            <div class="ev-input-group"><span>SpA</span><input type="number" id="iv-spa" class="ev-input" min="0" max="31" value="31"></div>
+                            <div class="ev-input-group"><span>SpD</span><input type="number" id="iv-spd" class="ev-input" min="0" max="31" value="31"></div>
+                            <div class="ev-input-group"><span>Spe</span><input type="number" id="iv-spe" class="ev-input" min="0" max="31" value="31"></div>
+                        </div>
+                    </div>
+
+                    <div class="builder-group" style="grid-column: 1 / -1;">
+                        <label>Moves (selecione 4)</label>
+                        <div class="moves-inputs">
+                            <select id="build-move1" class="builder-select"><option value="">-- Move 1 --</option></select>
+                            <select id="build-move2" class="builder-select"><option value="">-- Move 2 --</option></select>
+                            <select id="build-move3" class="builder-select"><option value="">-- Move 3 --</option></select>
+                            <select id="build-move4" class="builder-select"><option value="">-- Move 4 --</option></select>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 1.5rem;">
+                    <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem;">PREVIEW</label>
+                    <div id="build-preview" class="export-preview">Selecione as opções acima...</div>
+                </div>
+            </section>
+
+            <!-- Moves -->
             <section class="stats-section">
                 <h2 class="stats-section-title">Movimentos</h2>
                 <div id="moves-list"></div>
             </section>
 
+            <!-- Items -->
             <section class="stats-section">
                 <h2 class="stats-section-title">Itens</h2>
                 <div id="items-list"></div>
             </section>
 
+            <!-- Abilities -->
             <section class="stats-section">
                 <h2 class="stats-section-title">Habilidades</h2>
                 <div id="abilities-list"></div>
             </section>
 
+            <!-- Tera Types -->
             <section class="stats-section" id="tera-section">
                 <h2 class="stats-section-title">Tipos Tera</h2>
                 <div id="tera-list" class="tera-types"></div>
             </section>
 
+            <!-- EV Spreads -->
             <section class="stats-section spreads-section">
-                <h2 class="stats-section-title">Distribuições de EVs</h2>
+                <h2 class="stats-section-title">Distribuições de EVs (clique para usar)</h2>
                 <div id="spreads-list" class="spreads-list"></div>
             </section>
 
+            <!-- Teammates -->
             <section class="stats-section teammates-section">
                 <h2 class="stats-section-title">Parceiros de Time</h2>
                 <div id="teammates-list" class="teammates-grid"></div>
@@ -206,7 +378,7 @@
         </div>
         <div class="modal-body">
             <textarea id="export-text" readonly></textarea>
-            <button class="btn" onclick="copySet()">Copiar</button>
+            <button class="btn" onclick="copySet()">Copiar para Área de Transferência</button>
         </div>
     </div>
 </div>
@@ -230,22 +402,23 @@
 
     let pokemonData = null;
 
-    function getSprite(name) {
-        return `https://play.pokemonshowdown.com/sprites/gen5/${name.toLowerCase().replace(/[^a-z0-9]/g, '')}.png`;
+    function getSprite(name, spriteName) {
+        const cleanName = spriteName || name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return `https://play.pokemonshowdown.com/sprites/gen5/${cleanName}.png`;
     }
 
-    function statBar(name, pct) {
-        return `<div class="stat-item">
+    function statBar(name, pct, type, index) {
+        return `<div class="stat-item" data-type="${type}" data-value="${name}" data-index="${index}" onclick="selectStat(this)">
             <div class="stat-header"><span>${name}</span><span>${pct.toFixed(1)}%</span></div>
             <div class="stat-bar"><div class="stat-fill" style="width:${Math.min(pct,100)}%"></div></div>
         </div>`;
     }
 
     function teraBadge(type, pct) {
-        return `<div class="tera-badge" style="background:${typeColors[type]||'#888'}">${type} ${pct.toFixed(1)}%</div>`;
+        return `<div class="tera-badge" style="background:${typeColors[type]||'#888'}" data-type="${type}" onclick="selectTera(this)">${type} ${pct.toFixed(1)}%</div>`;
     }
 
-    function spreadCard(s) {
+    function spreadCard(s, index) {
         const evs = [];
         if(s.hp>0) evs.push(`${s.hp} HP`);
         if(s.atk>0) evs.push(`${s.atk} Atk`);
@@ -253,7 +426,7 @@
         if(s.spa>0) evs.push(`${s.spa} SpA`);
         if(s.spd>0) evs.push(`${s.spd} SpD`);
         if(s.spe>0) evs.push(`${s.spe} Spe`);
-        return `<div class="spread-card">
+        return `<div class="spread-card" data-index="${index}" onclick="selectSpread(${index})">
             <span class="spread-nature">${s.nature}</span>
             <span class="spread-percentage">${s.percentage.toFixed(1)}%</span>
             <div class="spread-evs">${evs.join(' / ')}</div>
@@ -261,24 +434,184 @@
     }
 
     function teammateCard(t) {
+        const sprite = getSprite(t.name);
         return `<a href="/pokemon/${FORMAT_CODE}/${encodeURIComponent(t.name)}?rating=${RATING}&month=${MONTH}" class="teammate-card">
-            <img src="${getSprite(t.name)}" class="teammate-sprite" onerror="this.style.opacity='0.3'">
+            <img src="${sprite}" class="teammate-sprite" onerror="this.style.opacity='0.3'">
             <span class="teammate-name">${t.name}</span>
             <span class="teammate-score">${t.score.toFixed(1)}%</span>
         </a>`;
     }
 
+    // Selection functions
+    function selectStat(el) {
+        const type = el.dataset.type;
+        const value = el.dataset.value;
+
+        // Toggle selection
+        el.classList.toggle('selected');
+
+        if (type === 'item') {
+            document.getElementById('build-item').value = el.classList.contains('selected') ? value : '';
+        } else if (type === 'ability') {
+            document.getElementById('build-ability').value = el.classList.contains('selected') ? value : '';
+        } else if (type === 'move') {
+            // Add to next empty move slot
+            const moves = ['build-move1', 'build-move2', 'build-move3', 'build-move4'];
+            if (el.classList.contains('selected')) {
+                for (const m of moves) {
+                    if (!document.getElementById(m).value) {
+                        document.getElementById(m).value = value;
+                        break;
+                    }
+                }
+            }
+        }
+
+        updatePreview();
+    }
+
+    function selectTera(el) {
+        document.querySelectorAll('.tera-badge').forEach(b => b.classList.remove('selected'));
+        el.classList.add('selected');
+        document.getElementById('build-tera').value = el.dataset.type;
+        updatePreview();
+    }
+
+    function selectSpread(index) {
+        document.querySelectorAll('.spread-card').forEach(c => c.classList.remove('selected'));
+        document.querySelectorAll('.spread-card')[index].classList.add('selected');
+
+        const spread = pokemonData.spreads[index];
+        document.getElementById('ev-hp').value = spread.hp;
+        document.getElementById('ev-atk').value = spread.atk;
+        document.getElementById('ev-def').value = spread.def;
+        document.getElementById('ev-spa').value = spread.spa;
+        document.getElementById('ev-spd').value = spread.spd;
+        document.getElementById('ev-spe').value = spread.spe;
+        document.getElementById('build-nature').value = spread.nature;
+
+        updateEvTotal();
+        updatePreview();
+    }
+
+    function updateEvTotal() {
+        const total = ['hp', 'atk', 'def', 'spa', 'spd', 'spe']
+            .reduce((sum, stat) => sum + (parseInt(document.getElementById('ev-' + stat).value) || 0), 0);
+        const el = document.getElementById('ev-total');
+        el.textContent = `Total: ${total}/510`;
+        el.classList.toggle('over', total > 510);
+    }
+
+    function updatePreview() {
+        const pokemon = POKEMON_NAME;
+        const item = document.getElementById('build-item').value;
+        const ability = document.getElementById('build-ability').value;
+        const tera = document.getElementById('build-tera').value;
+        const nature = document.getElementById('build-nature').value;
+
+        const evs = {
+            hp: parseInt(document.getElementById('ev-hp').value) || 0,
+            atk: parseInt(document.getElementById('ev-atk').value) || 0,
+            def: parseInt(document.getElementById('ev-def').value) || 0,
+            spa: parseInt(document.getElementById('ev-spa').value) || 0,
+            spd: parseInt(document.getElementById('ev-spd').value) || 0,
+            spe: parseInt(document.getElementById('ev-spe').value) || 0,
+        };
+
+        const ivs = {
+            hp: parseInt(document.getElementById('iv-hp').value),
+            atk: parseInt(document.getElementById('iv-atk').value),
+            def: parseInt(document.getElementById('iv-def').value),
+            spa: parseInt(document.getElementById('iv-spa').value),
+            spd: parseInt(document.getElementById('iv-spd').value),
+            spe: parseInt(document.getElementById('iv-spe').value),
+        };
+
+        const moves = [
+            document.getElementById('build-move1').value,
+            document.getElementById('build-move2').value,
+            document.getElementById('build-move3').value,
+            document.getElementById('build-move4').value,
+        ].filter(m => m);
+
+        let lines = [pokemon + (item ? ` @ ${item}` : '')];
+        if (ability) lines.push(`Ability: ${ability}`);
+        if (tera) lines.push(`Tera Type: ${tera}`);
+
+        const evsParts = [];
+        if (evs.hp > 0) evsParts.push(`${evs.hp} HP`);
+        if (evs.atk > 0) evsParts.push(`${evs.atk} Atk`);
+        if (evs.def > 0) evsParts.push(`${evs.def} Def`);
+        if (evs.spa > 0) evsParts.push(`${evs.spa} SpA`);
+        if (evs.spd > 0) evsParts.push(`${evs.spd} SpD`);
+        if (evs.spe > 0) evsParts.push(`${evs.spe} Spe`);
+        if (evsParts.length > 0) lines.push(`EVs: ${evsParts.join(' / ')}`);
+
+        const ivsParts = [];
+        if (ivs.hp < 31) ivsParts.push(`${ivs.hp} HP`);
+        if (ivs.atk < 31) ivsParts.push(`${ivs.atk} Atk`);
+        if (ivs.def < 31) ivsParts.push(`${ivs.def} Def`);
+        if (ivs.spa < 31) ivsParts.push(`${ivs.spa} SpA`);
+        if (ivs.spd < 31) ivsParts.push(`${ivs.spd} SpD`);
+        if (ivs.spe < 31) ivsParts.push(`${ivs.spe} Spe`);
+        if (ivsParts.length > 0) lines.push(`IVs: ${ivsParts.join(' / ')}`);
+
+        if (nature) lines.push(`${nature} Nature`);
+
+        moves.forEach(m => lines.push(`- ${m}`));
+
+        document.getElementById('build-preview').textContent = lines.join('\n');
+    }
+
+    function populateBuilderOptions(data) {
+        // Items
+        const itemSelect = document.getElementById('build-item');
+        data.items.forEach(i => {
+            const opt = document.createElement('option');
+            opt.value = i.name;
+            opt.textContent = `${i.name} (${i.percentage.toFixed(1)}%)`;
+            itemSelect.appendChild(opt);
+        });
+
+        // Abilities
+        const abilitySelect = document.getElementById('build-ability');
+        data.abilities.forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = a.name;
+            opt.textContent = `${a.name} (${a.percentage.toFixed(1)}%)`;
+            abilitySelect.appendChild(opt);
+        });
+
+        // Moves
+        const moveSelects = ['build-move1', 'build-move2', 'build-move3', 'build-move4'];
+        moveSelects.forEach(id => {
+            const sel = document.getElementById(id);
+            data.moves.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.name;
+                opt.textContent = `${m.name} (${m.percentage.toFixed(1)}%)`;
+                sel.appendChild(opt);
+            });
+        });
+
+        // Add change listeners
+        document.querySelectorAll('.builder-select, .ev-input').forEach(el => {
+            el.addEventListener('change', updatePreview);
+            el.addEventListener('input', () => { updateEvTotal(); updatePreview(); });
+        });
+    }
+
     function render(data) {
         pokemonData = data;
 
-        document.getElementById('pokemon-sprite').src = getSprite(data.name);
+        document.getElementById('pokemon-sprite').src = getSprite(data.name, data.sprite_name);
         document.getElementById('pokemon-name').textContent = data.name;
         document.getElementById('pokemon-rank').textContent = '#' + data.rank;
         document.getElementById('pokemon-usage').textContent = data.usage.toFixed(2) + '%';
 
-        document.getElementById('moves-list').innerHTML = data.moves.map(m => statBar(m.name, m.percentage)).join('');
-        document.getElementById('items-list').innerHTML = data.items.map(i => statBar(i.name, i.percentage)).join('');
-        document.getElementById('abilities-list').innerHTML = data.abilities.map(a => statBar(a.name, a.percentage)).join('');
+        document.getElementById('moves-list').innerHTML = data.moves.map((m, i) => statBar(m.name, m.percentage, 'move', i)).join('');
+        document.getElementById('items-list').innerHTML = data.items.map((i, idx) => statBar(i.name, i.percentage, 'item', idx)).join('');
+        document.getElementById('abilities-list').innerHTML = data.abilities.map((a, i) => statBar(a.name, a.percentage, 'ability', i)).join('');
 
         if (data.tera_types && data.tera_types.length > 0) {
             document.getElementById('tera-list').innerHTML = data.tera_types.map(t => teraBadge(t.name, t.percentage)).join('');
@@ -287,8 +620,11 @@
             document.getElementById('tera-section').classList.add('hidden');
         }
 
-        document.getElementById('spreads-list').innerHTML = data.spreads.map(s => spreadCard(s)).join('');
+        document.getElementById('spreads-list').innerHTML = data.spreads.map((s, i) => spreadCard(s, i)).join('');
         document.getElementById('teammates-list').innerHTML = data.teammates.map(t => teammateCard(t)).join('');
+
+        populateBuilderOptions(data);
+        updatePreview();
     }
 
     async function loadData() {
@@ -310,9 +646,10 @@
         }
     }
 
-    function openModal() {
+    function openModal(customSet = false) {
         if (!pokemonData) return;
-        document.getElementById('export-text').value = pokemonData.showdown_set;
+        const text = customSet ? document.getElementById('build-preview').textContent : pokemonData.showdown_set;
+        document.getElementById('export-text').value = text;
         document.getElementById('export-modal').classList.remove('hidden');
     }
 
@@ -327,7 +664,8 @@
         alert('Copiado!');
     }
 
-    document.getElementById('export-btn').addEventListener('click', openModal);
+    document.getElementById('export-btn').addEventListener('click', () => openModal(false));
+    document.getElementById('export-custom-btn').addEventListener('click', () => openModal(true));
     document.getElementById('export-modal').addEventListener('click', e => { if(e.target.id === 'export-modal') closeModal(); });
 
     loadData();

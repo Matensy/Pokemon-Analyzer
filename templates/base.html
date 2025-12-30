@@ -31,7 +31,6 @@
         a:hover { color: var(--secondary); }
         .container { max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
 
-        /* Header */
         .header {
             background: var(--bg-secondary);
             border-bottom: 1px solid var(--border-color);
@@ -48,11 +47,10 @@
         .nav { display: flex; gap: 1.5rem; }
         .nav-link { color: var(--text-secondary); font-weight: 500; }
         .nav-link:hover, .nav-link.active { color: var(--text-primary); }
+        .nav-link.builder-link { color: var(--secondary); }
 
-        /* Main */
         .main { padding: 2rem 0; min-height: calc(100vh - 200px); }
 
-        /* Footer */
         .footer {
             background: var(--bg-secondary);
             border-top: 1px solid var(--border-color);
@@ -62,7 +60,6 @@
             font-size: 0.875rem;
         }
 
-        /* Components */
         .btn {
             display: inline-flex;
             align-items: center;
@@ -73,8 +70,11 @@
             border-radius: 8px;
             font-weight: 600;
             cursor: pointer;
+            font-size: 0.875rem;
         }
         .btn:hover { background: var(--primary-dark); color: white; }
+        .btn-secondary { background: var(--bg-card); border: 1px solid var(--border-color); }
+        .btn-secondary:hover { background: var(--bg-card-hover); }
 
         .hidden { display: none !important; }
 
@@ -90,6 +90,10 @@
         @keyframes spin { to { transform: rotate(360deg); } }
 
         .error { text-align: center; padding: 3rem; color: var(--text-secondary); }
+
+        @media (max-width: 768px) {
+            .nav { gap: 1rem; font-size: 0.875rem; }
+        }
     </style>
     {% block head %}{% endblock %}
 </head>
@@ -102,6 +106,7 @@
             </a>
             <nav class="nav">
                 <a href="/" class="nav-link">Formatos</a>
+                <a href="/builder" class="nav-link builder-link">Team Builder</a>
                 <a href="/about" class="nav-link">Sobre</a>
             </nav>
         </div>
