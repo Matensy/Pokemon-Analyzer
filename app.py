@@ -360,6 +360,135 @@ def generate_showdown_set(pokemon_data, pokemon_name, custom=None):
     return '\n'.join(lines)
 
 
+# ==================== REPLAYS ====================
+
+REPLAY_BASE_URL = "https://replay.pokemonshowdown.com"
+
+
+def fetch_replays(format_code, page=1):
+    """Busca replays do Pokemon Showdown"""
+    url = f"{REPLAY_BASE_URL}/search.json?format={format_code}&page={page}"
+    try:
+        response = requests.get(url, timeout=15)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        print(f"Erro ao buscar replays: {e}")
+        return []
+
+
+def fetch_replay_detail(replay_id):
+    """Busca detalhes de um replay específico"""
+    url = f"{REPLAY_BASE_URL}/{replay_id}.json"
+    try:
+        response = requests.get(url, timeout=15)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        print(f"Erro ao buscar replay {replay_id}: {e}")
+        return None
+
+
+def parse_team_from_log(log, player_num):
+    """Extrai o time de um jogador do log do replay"""
+    team = []
+    player_prefix = f"p{player_num}"
+
+    # Primeiro, tentar extrair do team preview (|poke|)
+    poke_pattern = rf'\|poke\|{player_prefix}\|([^|]+)\|'
+    poke_matches = re.findall(poke_pattern, log)
+
+    for match in poke_matches:
+        # Parse: "Pokemon, L50, M" ou "Pokemon, L50, F" ou "Pokemon, L50"
+        parts = match.split(',')
+        pokemon_name = parts[0].strip()
+        level = 50
+        gender = None
+
+        for part in parts[1:]:
+            part = part.strip()
+            if part.startswith('L'):
+                try:
+                    level = int(part[1:])
+                except:
+                    pass
+            elif part in ['M', 'F']:
+                gender = part
+
+        team.append({
+            'name': pokemon_name,
+            'sprite_name': get_sprite_name(pokemon_name),
+            'level': level,
+            'gender': gender,
+            'item': None,
+            'ability': None,
+            'tera_type': None,
+            'moves': []
+        })
+
+    # Extrair items dos switches (|switch|p1a: Nickname|Pokemon, L50, M|HP)
+    # E também de |-item| eventos
+    item_pattern = rf'\|-item\|{player_prefix}[ab]: [^|]+\|([^|]+)'
+    item_matches = re.findall(item_pattern, log)
+
+    # Extrair abilities
+    ability_pattern = rf'\|-ability\|{player_prefix}[ab]: ([^|]+)\|([^|]+)'
+    ability_matches = re.findall(ability_pattern, log)
+    for nickname, ability in ability_matches:
+        # Tentar associar ao Pokemon
+        for poke in team:
+            if nickname.lower() in poke['name'].lower() or poke['name'].lower() in nickname.lower():
+                poke['ability'] = ability
+                break
+
+    # Extrair Tera types
+    tera_pattern = rf'\|-terastallize\|{player_prefix}[ab]: ([^|]+)\|([^|]+)'
+    tera_matches = re.findall(tera_pattern, log)
+    for nickname, tera_type in tera_matches:
+        for poke in team:
+            if nickname.lower() in poke['name'].lower() or poke['name'].lower() in nickname.lower():
+                poke['tera_type'] = tera_type
+                break
+
+    # Extrair moves usados
+    move_pattern = rf'\|move\|{player_prefix}[ab]: ([^|]+)\|([^|]+)'
+    move_matches = re.findall(move_pattern, log)
+    for nickname, move in move_matches:
+        for poke in team:
+            if (nickname.lower() in poke['name'].lower() or poke['name'].lower() in nickname.lower()):
+                if move not in poke['moves'] and len(poke['moves']) < 4:
+                    poke['moves'].append(move)
+                break
+
+    return team
+
+
+def generate_team_export(team):
+    """Gera exportação do time no formato Showdown"""
+    lines = []
+    for poke in team:
+        pokemon_line = poke['name']
+        if poke.get('item'):
+            pokemon_line += f" @ {poke['item']}"
+        lines.append(pokemon_line)
+
+        if poke.get('ability'):
+            lines.append(f"Ability: {poke['ability']}")
+
+        if poke.get('tera_type'):
+            lines.append(f"Tera Type: {poke['tera_type']}")
+
+        if poke.get('level') and poke['level'] != 100:
+            lines.append(f"Level: {poke['level']}")
+
+        for move in poke.get('moves', []):
+            lines.append(f"- {move}")
+
+        lines.append("")  # Linha em branco entre Pokemon
+
+    return '\n'.join(lines)
+
+
 # ==================== ROTAS ====================
 
 @app.route('/')
@@ -406,6 +535,17 @@ def pokemon_page(format_code, pokemon_name):
 def builder_page():
     """Team Builder"""
     return render_template('builder.html', formats=FORMATS, tera_types=TERA_TYPES, natures=NATURES)
+
+
+@app.route('/replays')
+@app.route('/replays/<format_code>')
+def replays_page(format_code=None):
+    """Página de Replays"""
+    if not format_code:
+        format_code = 'gen9vgc2025regh'
+    all_formats = get_all_formats_flat()
+    format_name = all_formats.get(format_code, format_code)
+    return render_template('replays.html', formats=FORMATS, format_code=format_code, format_name=format_name)
 
 
 @app.route('/about')
@@ -569,6 +709,137 @@ Responda em português brasileiro, em formato JSON com esta estrutura:
 
     except Exception as e:
         return jsonify({'error': f'Erro ao consultar Gemini: {str(e)}'}), 500
+
+
+# ==================== API REPLAYS ====================
+
+@app.route('/api/replays/<format_code>')
+def api_replays(format_code):
+    """Busca replays de um formato"""
+    page = request.args.get('page', 1, type=int)
+    replays = fetch_replays(format_code, page)
+
+    # Limitar a 20 replays
+    if isinstance(replays, list):
+        replays = replays[:20]
+
+    return jsonify({'replays': replays, 'format': format_code, 'page': page})
+
+
+@app.route('/api/replay/<replay_id>')
+def api_replay_detail(replay_id):
+    """Busca detalhes de um replay com times parseados"""
+    replay = fetch_replay_detail(replay_id)
+
+    if not replay:
+        return jsonify({'error': 'Replay não encontrado'}), 404
+
+    log = replay.get('log', '')
+
+    # Extrair times dos dois jogadores
+    team1 = parse_team_from_log(log, 1)
+    team2 = parse_team_from_log(log, 2)
+
+    # Gerar exports
+    export1 = generate_team_export(team1)
+    export2 = generate_team_export(team2)
+
+    return jsonify({
+        'id': replay.get('id'),
+        'format': replay.get('format'),
+        'players': replay.get('players', []),
+        'rating': replay.get('rating'),
+        'uploadtime': replay.get('uploadtime'),
+        'views': replay.get('views'),
+        'p1': replay.get('p1'),
+        'p2': replay.get('p2'),
+        'winner': replay.get('winner'),
+        'team1': team1,
+        'team2': team2,
+        'export1': export1,
+        'export2': export2,
+        'replay_url': f"https://replay.pokemonshowdown.com/{replay_id}"
+    })
+
+
+@app.route('/api/analyze-team', methods=['POST'])
+def api_analyze_team():
+    """Analisa um time e dá dicas de como jogar"""
+    if not GEMINI_API_KEY:
+        return jsonify({'error': 'API key não configurada. Adicione GEMINI_API_KEY nas variáveis de ambiente.'}), 400
+
+    data = request.json
+    team = data.get('team', [])
+    format_code = data.get('format', 'gen9vgc2025regh')
+
+    if not team:
+        return jsonify({'error': 'Time vazio'}), 400
+
+    # Montar descrição do time
+    team_desc = []
+    for poke in team:
+        desc = poke.get('name', 'Unknown')
+        if poke.get('tera_type'):
+            desc += f" (Tera {poke['tera_type']})"
+        if poke.get('moves'):
+            desc += f" - Moves: {', '.join(poke['moves'][:4])}"
+        team_desc.append(desc)
+
+    team_str = '\n'.join(team_desc)
+
+    # Determinar se é VGC ou outro formato
+    is_vgc = 'vgc' in format_code.lower() or 'doubles' in format_code.lower()
+    format_type = "VGC (doubles)" if is_vgc else "Singles"
+
+    prompt = f"""Você é um coach profissional de Pokemon competitivo.
+
+Analise este time de {format_type} ({format_code}) e explique como jogar com ele:
+
+{team_str}
+
+Forneça uma análise detalhada em português brasileiro incluindo:
+
+1. **Visão Geral do Time**: Qual é o arquétipo/estilo do time (offense, balance, stall, trick room, tailwind, etc)
+
+2. **Win Conditions**: Quais são as condições de vitória principais
+
+3. **Leads Recomendados**: Quais Pokemon devem começar na frente e por quê {"(lembre-se que em VGC você leva 4 dos 6)" if is_vgc else ""}
+
+4. **Synergias Importantes**: Quais combinações de Pokemon funcionam bem juntas
+
+5. **Ameaças e Counters**: Quais Pokemon/estratégias do meta são perigosas para este time e como lidar
+
+6. **Dicas de Gameplay**:
+   - Quando usar Tera e em quem
+   - Ordem de prioridade de knockouts
+   - Posicionamento e proteção de Pokemon chave
+
+7. **Matchups Difíceis**: Times ou cores que dão problema e como jogar contra
+
+Seja específico e prático, dando conselhos que podem ser aplicados imediatamente."""
+
+    try:
+        response = requests.post(
+            f'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}',
+            headers={'Content-Type': 'application/json'},
+            json={
+                'contents': [{'parts': [{'text': prompt}]}],
+                'generationConfig': {
+                    'temperature': 0.7,
+                    'maxOutputTokens': 2048
+                }
+            },
+            timeout=60
+        )
+        response.raise_for_status()
+
+        result = response.json()
+        content = result['candidates'][0]['content']['parts'][0]['text']
+
+        return jsonify({'analysis': content, 'format': format_code})
+
+    except Exception as e:
+        return jsonify({'error': f'Erro ao analisar time: {str(e)}'}), 500
 
 
 @app.errorhandler(404)

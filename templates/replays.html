@@ -1,0 +1,578 @@
+{% extends "base.html" %}
+
+{% block title %}Replays - {{ format_name }} - PokeStatsBR{% endblock %}
+
+{% block head %}
+<style>
+    .page-header {
+        margin-bottom: 2rem;
+    }
+    .page-title {
+        font-size: 2rem;
+        font-weight: 800;
+        margin-bottom: 0.5rem;
+    }
+    .page-subtitle {
+        color: var(--text-secondary);
+    }
+
+    .format-selector {
+        background: var(--bg-card);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    .format-selector label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+    .format-selector select {
+        width: 100%;
+        max-width: 400px;
+        padding: 0.75rem;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-size: 1rem;
+    }
+
+    .replays-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .replay-card {
+        background: var(--bg-card);
+        border-radius: 12px;
+        padding: 1.5rem;
+        border: 1px solid var(--border-color);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .replay-card:hover {
+        border-color: var(--primary);
+        background: var(--bg-card-hover);
+    }
+    .replay-card.expanded {
+        border-color: var(--primary);
+    }
+
+    .replay-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    .replay-players {
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+    .replay-vs {
+        color: var(--text-muted);
+        margin: 0 0.5rem;
+    }
+    .replay-winner {
+        color: var(--primary);
+    }
+    .replay-meta {
+        display: flex;
+        gap: 1rem;
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+    .replay-rating {
+        background: var(--primary);
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-weight: 600;
+    }
+
+    .replay-details {
+        display: none;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-color);
+    }
+    .replay-card.expanded .replay-details {
+        display: block;
+    }
+
+    .teams-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+    }
+    @media (max-width: 768px) {
+        .teams-container {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .team-section {
+        background: var(--bg-secondary);
+        border-radius: 8px;
+        padding: 1rem;
+    }
+    .team-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    .team-player {
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+    .team-player.winner {
+        color: var(--primary);
+    }
+    .team-player.winner::after {
+        content: ' (Vencedor)';
+        font-size: 0.75rem;
+        opacity: 0.8;
+    }
+
+    .team-pokemon {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    .pokemon-mini {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        background: var(--bg-card);
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+    }
+    .pokemon-mini img {
+        width: 32px;
+        height: 32px;
+        image-rendering: pixelated;
+    }
+
+    .team-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .btn-small {
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+    }
+    .btn-analyze {
+        background: var(--secondary);
+        color: #000;
+    }
+    .btn-analyze:hover {
+        background: #e6c800;
+        color: #000;
+    }
+
+    .export-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.8);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+        padding: 1rem;
+    }
+    .export-modal.active {
+        display: flex;
+    }
+    .export-content {
+        background: var(--bg-card);
+        border-radius: 12px;
+        padding: 2rem;
+        max-width: 600px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    .export-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    .export-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+    }
+    .export-close {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 1.5rem;
+        cursor: pointer;
+    }
+    .export-close:hover {
+        color: var(--text-primary);
+    }
+    .export-textarea {
+        width: 100%;
+        min-height: 300px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1rem;
+        color: var(--text-primary);
+        font-family: monospace;
+        font-size: 0.875rem;
+        resize: vertical;
+        margin-bottom: 1rem;
+    }
+    .export-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .analysis-content {
+        background: var(--bg-secondary);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-top: 1rem;
+        line-height: 1.6;
+        white-space: pre-wrap;
+    }
+    .analysis-content h1, .analysis-content h2, .analysis-content h3 {
+        color: var(--primary);
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+    }
+    .analysis-content strong {
+        color: var(--secondary);
+    }
+    .analysis-loading {
+        text-align: center;
+        padding: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1 class="page-title">Replays Recentes</h1>
+        <p class="page-subtitle">Ultimas 20 partidas - Exporte times e analise estrategias</p>
+    </div>
+
+    <div class="format-selector">
+        <label for="format-select">Selecionar Formato:</label>
+        <select id="format-select">
+            {% for category_key, category in formats.items() %}
+                <optgroup label="{{ category.nome }}">
+                    {% for code, name in category.formatos.items() %}
+                        <option value="{{ code }}" {% if code == format_code %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </optgroup>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>Carregando replays...</p>
+    </div>
+
+    <div id="error" class="error hidden">
+        <p>Erro ao carregar replays</p>
+    </div>
+
+    <div id="replays-container" class="replays-grid hidden"></div>
+</div>
+
+<!-- Modal de Exportacao -->
+<div id="export-modal" class="export-modal">
+    <div class="export-content">
+        <div class="export-header">
+            <h3 class="export-title">Exportar Time</h3>
+            <button class="export-close" onclick="closeExportModal()">&times;</button>
+        </div>
+        <textarea id="export-textarea" class="export-textarea" readonly></textarea>
+        <div class="export-actions">
+            <button class="btn" onclick="copyExport()">Copiar</button>
+            <button class="btn btn-secondary" onclick="closeExportModal()">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Analise -->
+<div id="analysis-modal" class="export-modal">
+    <div class="export-content" style="max-width: 800px;">
+        <div class="export-header">
+            <h3 class="export-title">Analise do Time</h3>
+            <button class="export-close" onclick="closeAnalysisModal()">&times;</button>
+        </div>
+        <div id="analysis-content"></div>
+        <div class="export-actions">
+            <button class="btn btn-secondary" onclick="closeAnalysisModal()">Fechar</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const formatSelect = document.getElementById('format-select');
+const loadingEl = document.getElementById('loading');
+const errorEl = document.getElementById('error');
+const container = document.getElementById('replays-container');
+
+let currentFormat = '{{ format_code }}';
+let replaysData = {};
+
+formatSelect.addEventListener('change', function() {
+    currentFormat = this.value;
+    window.history.pushState({}, '', '/replays/' + currentFormat);
+    loadReplays();
+});
+
+async function loadReplays() {
+    loadingEl.classList.remove('hidden');
+    errorEl.classList.add('hidden');
+    container.classList.add('hidden');
+    container.innerHTML = '';
+
+    try {
+        const response = await fetch(`/api/replays/${currentFormat}`);
+        const data = await response.json();
+
+        if (data.error) {
+            throw new Error(data.error);
+        }
+
+        renderReplays(data.replays || []);
+    } catch (err) {
+        console.error(err);
+        errorEl.classList.remove('hidden');
+        errorEl.innerHTML = `<p>Erro: ${err.message}</p>`;
+    } finally {
+        loadingEl.classList.add('hidden');
+    }
+}
+
+function formatDate(timestamp) {
+    if (!timestamp) return '';
+    const date = new Date(timestamp * 1000);
+    return date.toLocaleDateString('pt-BR') + ' ' + date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
+}
+
+function renderReplays(replays) {
+    if (replays.length === 0) {
+        container.innerHTML = '<div class="error"><p>Nenhum replay encontrado para este formato.</p></div>';
+        container.classList.remove('hidden');
+        return;
+    }
+
+    container.innerHTML = replays.map((replay, index) => `
+        <div class="replay-card" data-id="${replay.id}" onclick="toggleReplay('${replay.id}')">
+            <div class="replay-header">
+                <div class="replay-players">
+                    <span>${replay.p1 || 'Jogador 1'}</span>
+                    <span class="replay-vs">vs</span>
+                    <span>${replay.p2 || 'Jogador 2'}</span>
+                </div>
+                <div class="replay-meta">
+                    ${replay.rating ? `<span class="replay-rating">${replay.rating}</span>` : ''}
+                    <span>${formatDate(replay.uploadtime)}</span>
+                </div>
+            </div>
+            <div class="replay-details" id="details-${replay.id}">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Carregando times...</p>
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    container.classList.remove('hidden');
+}
+
+async function toggleReplay(replayId) {
+    const card = document.querySelector(`[data-id="${replayId}"]`);
+    const details = document.getElementById(`details-${replayId}`);
+
+    if (card.classList.contains('expanded')) {
+        card.classList.remove('expanded');
+        return;
+    }
+
+    // Fechar outros
+    document.querySelectorAll('.replay-card.expanded').forEach(c => c.classList.remove('expanded'));
+
+    card.classList.add('expanded');
+
+    // Carregar detalhes se ainda nao carregou
+    if (!replaysData[replayId]) {
+        try {
+            const response = await fetch(`/api/replay/${replayId}`);
+            const data = await response.json();
+
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            replaysData[replayId] = data;
+            renderReplayDetails(replayId, data);
+        } catch (err) {
+            details.innerHTML = `<div class="error"><p>Erro ao carregar: ${err.message}</p></div>`;
+        }
+    }
+}
+
+function getSpriteUrl(spriteName) {
+    return `https://play.pokemonshowdown.com/sprites/gen5/${spriteName}.png`;
+}
+
+function renderReplayDetails(replayId, data) {
+    const details = document.getElementById(`details-${replayId}`);
+    const p1IsWinner = data.winner === data.p1;
+    const p2IsWinner = data.winner === data.p2;
+
+    details.innerHTML = `
+        <div class="teams-container">
+            <div class="team-section">
+                <div class="team-header">
+                    <span class="team-player ${p1IsWinner ? 'winner' : ''}">${data.p1 || 'Jogador 1'}</span>
+                </div>
+                <div class="team-pokemon">
+                    ${(data.team1 || []).map(p => `
+                        <div class="pokemon-mini">
+                            <img src="${getSpriteUrl(p.sprite_name)}" onerror="this.src='https://play.pokemonshowdown.com/sprites/gen5/0.png'" alt="${p.name}">
+                            <span>${p.name}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="team-actions">
+                    <button class="btn btn-small" onclick="event.stopPropagation(); showExport('${replayId}', 1)">Exportar Time</button>
+                    <button class="btn btn-small btn-analyze" onclick="event.stopPropagation(); analyzeTeam('${replayId}', 1)">Analisar</button>
+                </div>
+            </div>
+            <div class="team-section">
+                <div class="team-header">
+                    <span class="team-player ${p2IsWinner ? 'winner' : ''}">${data.p2 || 'Jogador 2'}</span>
+                </div>
+                <div class="team-pokemon">
+                    ${(data.team2 || []).map(p => `
+                        <div class="pokemon-mini">
+                            <img src="${getSpriteUrl(p.sprite_name)}" onerror="this.src='https://play.pokemonshowdown.com/sprites/gen5/0.png'" alt="${p.name}">
+                            <span>${p.name}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="team-actions">
+                    <button class="btn btn-small" onclick="event.stopPropagation(); showExport('${replayId}', 2)">Exportar Time</button>
+                    <button class="btn btn-small btn-analyze" onclick="event.stopPropagation(); analyzeTeam('${replayId}', 2)">Analisar</button>
+                </div>
+            </div>
+        </div>
+        <div style="margin-top: 1rem; text-align: center;">
+            <a href="${data.replay_url}" target="_blank" class="btn btn-secondary btn-small">Ver Replay Completo</a>
+        </div>
+    `;
+}
+
+function showExport(replayId, playerNum) {
+    const data = replaysData[replayId];
+    if (!data) return;
+
+    const exportText = playerNum === 1 ? data.export1 : data.export2;
+    const playerName = playerNum === 1 ? data.p1 : data.p2;
+
+    document.getElementById('export-textarea').value = exportText;
+    document.querySelector('.export-title').textContent = `Exportar Time - ${playerName}`;
+    document.getElementById('export-modal').classList.add('active');
+}
+
+function closeExportModal() {
+    document.getElementById('export-modal').classList.remove('active');
+}
+
+function copyExport() {
+    const textarea = document.getElementById('export-textarea');
+    textarea.select();
+    document.execCommand('copy');
+    alert('Time copiado!');
+}
+
+async function analyzeTeam(replayId, playerNum) {
+    const data = replaysData[replayId];
+    if (!data) return;
+
+    const team = playerNum === 1 ? data.team1 : data.team2;
+    const playerName = playerNum === 1 ? data.p1 : data.p2;
+
+    const modal = document.getElementById('analysis-modal');
+    const content = document.getElementById('analysis-content');
+
+    document.querySelector('#analysis-modal .export-title').textContent = `Analise - ${playerName}`;
+    content.innerHTML = `
+        <div class="analysis-loading">
+            <div class="spinner"></div>
+            <p>Analisando time com IA...</p>
+        </div>
+    `;
+    modal.classList.add('active');
+
+    try {
+        const response = await fetch('/api/analyze-team', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                team: team,
+                format: currentFormat
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.error) {
+            content.innerHTML = `<div class="error"><p>Erro: ${result.error}</p></div>`;
+        } else {
+            content.innerHTML = `<div class="analysis-content">${formatAnalysis(result.analysis)}</div>`;
+        }
+    } catch (err) {
+        content.innerHTML = `<div class="error"><p>Erro ao analisar: ${err.message}</p></div>`;
+    }
+}
+
+function formatAnalysis(text) {
+    // Converter markdown basico para HTML
+    return text
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+        .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+        .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+        .replace(/^- (.+)$/gm, '&bull; $1<br>')
+        .replace(/\n/g, '<br>');
+}
+
+function closeAnalysisModal() {
+    document.getElementById('analysis-modal').classList.remove('active');
+}
+
+// Fechar modais com ESC
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeExportModal();
+        closeAnalysisModal();
+    }
+});
+
+// Carregar replays iniciais
+loadReplays();
+</script>
+{% endblock %}
