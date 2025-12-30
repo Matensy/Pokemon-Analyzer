@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PokeStatsBR - Estatísticas do Pokémon Showdown em português para a comunidade brasileira">
+    <title>PokeStatsBR - Estatísticas Pokémon Showdown</title>
+    <link rel="icon" href="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/css/style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <a href="index.html" class="logo">
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png" alt="Pokeball" class="logo-icon">
+                <span class="logo-text">PokeStats<span class="logo-br">BR</span></span>
+            </a>
+            <nav class="nav">
+                <a href="index.html" class="nav-link active">Formatos</a>
+                <a href="about.html" class="nav-link">Sobre</a>
+                <a href="https://pokemonshowdown.com" target="_blank" rel="noopener" class="nav-link external">Showdown</a>
+            </nav>
+            <button class="mobile-menu-btn" aria-label="Menu" onclick="toggleMobileMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobileMenu">
+        <a href="index.html" class="mobile-menu-link">Formatos</a>
+        <a href="about.html" class="mobile-menu-link">Sobre</a>
+        <a href="https://pokemonshowdown.com" target="_blank" rel="noopener" class="mobile-menu-link">Showdown</a>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            <!-- Hero Section -->
+            <section class="hero">
+                <h1 class="hero-title">PokeStats<span class="text-yellow">BR</span></h1>
+                <p class="hero-subtitle">Estatísticas do Pokémon Showdown em português para a comunidade brasileira</p>
+                <div class="hero-features">
+                    <div class="feature"><span class="feature-icon">📊</span><span class="feature-text">Taxa de Uso</span></div>
+                    <div class="feature"><span class="feature-icon">⚡</span><span class="feature-text">Moves Populares</span></div>
+                    <div class="feature"><span class="feature-icon">🎒</span><span class="feature-text">Itens & Abilities</span></div>
+                    <div class="feature"><span class="feature-icon">💎</span><span class="feature-text">Tera Types</span></div>
+                </div>
+            </section>
+
+            <!-- Format Categories -->
+            <section class="formats-section">
+                <h2 class="section-title">Escolha um Formato</h2>
+
+                <!-- VGC -->
+                <div class="format-category">
+                    <h3 class="category-title">VGC (Doubles Oficial)</h3>
+                    <div class="formats-grid">
+                        <a href="format.html?format=gen9vgc2025regh" class="format-card">
+                            <div class="format-icon">🏆</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 9] VGC 2025 Reg H</span>
+                                <span class="format-code">gen9vgc2025regh</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                        <a href="format.html?format=gen9vgc2025regg" class="format-card">
+                            <div class="format-icon">🏆</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 9] VGC 2025 Reg G</span>
+                                <span class="format-code">gen9vgc2025regg</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Singles Smogon -->
+                <div class="format-category">
+                    <h3 class="category-title">Singles Smogon</h3>
+                    <div class="formats-grid">
+                        <a href="format.html?format=gen9ou" class="format-card">
+                            <div class="format-icon">🌟</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 9] OverUsed</span>
+                                <span class="format-code">gen9ou</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                        <a href="format.html?format=gen9ubers" class="format-card">
+                            <div class="format-icon">⚔️</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 9] Ubers</span>
+                                <span class="format-code">gen9ubers</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                        <a href="format.html?format=gen9uu" class="format-card">
+                            <div class="format-icon">📈</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 9] UnderUsed</span>
+                                <span class="format-code">gen9uu</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                        <a href="format.html?format=gen9ru" class="format-card">
+                            <div class="format-icon">📈</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 9] RarelyUsed</span>
+                                <span class="format-code">gen9ru</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                        <a href="format.html?format=gen9nu" class="format-card">
+                            <div class="format-icon">📈</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 9] NeverUsed</span>
+                                <span class="format-code">gen9nu</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                        <a href="format.html?format=gen9pu" class="format-card">
+                            <div class="format-icon">📈</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 9] PU</span>
+                                <span class="format-code">gen9pu</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                        <a href="format.html?format=gen9lc" class="format-card">
+                            <div class="format-icon">🍼</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 9] Little Cup</span>
+                                <span class="format-code">gen9lc</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                        <a href="format.html?format=gen9monotype" class="format-card">
+                            <div class="format-icon">🎨</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 9] Monotype</span>
+                                <span class="format-code">gen9monotype</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Doubles Smogon -->
+                <div class="format-category">
+                    <h3 class="category-title">Doubles Smogon</h3>
+                    <div class="formats-grid">
+                        <a href="format.html?format=gen9doublesou" class="format-card">
+                            <div class="format-icon">👥</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 9] Doubles OU</span>
+                                <span class="format-code">gen9doublesou</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                        <a href="format.html?format=gen9doublesubers" class="format-card">
+                            <div class="format-icon">👥</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 9] Doubles Ubers</span>
+                                <span class="format-code">gen9doublesubers</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                        <a href="format.html?format=gen9doublesuu" class="format-card">
+                            <div class="format-icon">👥</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 9] Doubles UU</span>
+                                <span class="format-code">gen9doublesuu</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- National Dex -->
+                <div class="format-category">
+                    <h3 class="category-title">National Dex</h3>
+                    <div class="formats-grid">
+                        <a href="format.html?format=gen9nationaldex" class="format-card">
+                            <div class="format-icon">📚</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 9] National Dex</span>
+                                <span class="format-code">gen9nationaldex</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                        <a href="format.html?format=gen9nationaldexubers" class="format-card">
+                            <div class="format-icon">📚</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 9] National Dex Ubers</span>
+                                <span class="format-code">gen9nationaldexubers</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                        <a href="format.html?format=gen9nationaldexmonotype" class="format-card">
+                            <div class="format-icon">📚</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 9] National Dex Monotype</span>
+                                <span class="format-code">gen9nationaldexmonotype</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Outros -->
+                <div class="format-category">
+                    <h3 class="category-title">Outros Formatos</h3>
+                    <div class="formats-grid">
+                        <a href="format.html?format=gen9anythinggoes" class="format-card">
+                            <div class="format-icon">🔥</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 9] Anything Goes</span>
+                                <span class="format-code">gen9anythinggoes</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                        <a href="format.html?format=gen9randombattle" class="format-card">
+                            <div class="format-icon">🎲</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 9] Random Battle</span>
+                                <span class="format-code">gen9randombattle</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                        <a href="format.html?format=gen9balancedhackmons" class="format-card">
+                            <div class="format-icon">🔥</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 9] Balanced Hackmons</span>
+                                <span class="format-code">gen9balancedhackmons</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                        <a href="format.html?format=gen91v1" class="format-card">
+                            <div class="format-icon">🎯</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 9] 1v1</span>
+                                <span class="format-code">gen91v1</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Gerações Anteriores -->
+                <div class="format-category">
+                    <h3 class="category-title">Gerações Anteriores</h3>
+                    <div class="formats-grid">
+                        <a href="format.html?format=gen8ou" class="format-card">
+                            <div class="format-icon">📋</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 8] OverUsed</span>
+                                <span class="format-code">gen8ou</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                        <a href="format.html?format=gen7ou" class="format-card">
+                            <div class="format-icon">📋</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 7] OverUsed</span>
+                                <span class="format-code">gen7ou</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                        <a href="format.html?format=gen6ou" class="format-card">
+                            <div class="format-icon">📋</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 6] OverUsed</span>
+                                <span class="format-code">gen6ou</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                        <a href="format.html?format=gen5ou" class="format-card">
+                            <div class="format-icon">📋</div>
+                            <div class="format-info">
+                                <span class="format-name">[Gen 5] OverUsed</span>
+                                <span class="format-code">gen5ou</span>
+                            </div>
+                            <span class="format-arrow">→</span>
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Info Section -->
+            <section class="info-section">
+                <div class="info-cards">
+                    <div class="info-card">
+                        <h3>Como Funciona?</h3>
+                        <p>Os dados são obtidos diretamente do <strong>Smogon Stats</strong>, que analisa milhões de batalhas no Pokémon Showdown mensalmente.</p>
+                    </div>
+                    <div class="info-card">
+                        <h3>Atualização</h3>
+                        <p>Os dados são atualizados no início de cada mês, refletindo as batalhas do mês anterior.</p>
+                    </div>
+                    <div class="info-card">
+                        <h3>Ratings</h3>
+                        <p>Escolha entre diferentes níveis de rating para ver como os jogadores de alto nível constroem seus times.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-info">
+                    <p class="footer-brand">PokeStatsBR</p>
+                    <p class="footer-desc">Estatísticas do Pokémon Showdown em português para a comunidade brasileira.</p>
+                    <p class="footer-credits">Inspirado no <a href="https://munchstats.com" target="_blank" rel="noopener">MunchStats</a></p>
+                </div>
+                <div class="footer-links">
+                    <h4>Links</h4>
+                    <a href="https://www.smogon.com/stats/" target="_blank" rel="noopener">Smogon Stats</a>
+                    <a href="https://pokemonshowdown.com" target="_blank" rel="noopener">Pokémon Showdown</a>
+                    <a href="https://pikalytics.com" target="_blank" rel="noopener">Pikalytics</a>
+                </div>
+                <div class="footer-links">
+                    <h4>Comunidade</h4>
+                    <a href="https://www.smogon.com/forums/" target="_blank" rel="noopener">Smogon Forums</a>
+                    <a href="https://www.reddit.com/r/pokemon/" target="_blank" rel="noopener">r/pokemon</a>
+                    <a href="https://www.reddit.com/r/VGC/" target="_blank" rel="noopener">r/VGC</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>Pokémon e todos os nomes relacionados são marca registrada Nintendo 1996-2024.</p>
+                <p>Este é um projeto de fã não-oficial. Feito com carinho para a comunidade brasileira.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="static/js/main.js"></script>
+</body>
+</html>

@@ -1,36 +1,38 @@
 /**
  * PokeStatsBR - Main JavaScript
+ * Site estático para GitHub Pages
  */
 
 // Mobile menu toggle
-document.addEventListener('DOMContentLoaded', () => {
+function toggleMobileMenu() {
+    const mobileMenu = document.getElementById('mobileMenu');
     const menuBtn = document.querySelector('.mobile-menu-btn');
-    const mobileMenu = document.querySelector('.mobile-menu');
-
-    if (menuBtn && mobileMenu) {
-        menuBtn.addEventListener('click', () => {
-            mobileMenu.classList.toggle('active');
-            menuBtn.classList.toggle('active');
-        });
+    if (mobileMenu) {
+        mobileMenu.classList.toggle('active');
     }
+    if (menuBtn) {
+        menuBtn.classList.toggle('active');
+    }
+}
 
-    // Close mobile menu when clicking outside
-    document.addEventListener('click', (e) => {
-        if (mobileMenu && !mobileMenu.contains(e.target) && !menuBtn.contains(e.target)) {
+// Close mobile menu when clicking outside
+document.addEventListener('click', (e) => {
+    const mobileMenu = document.getElementById('mobileMenu');
+    const menuBtn = document.querySelector('.mobile-menu-btn');
+    if (mobileMenu && menuBtn) {
+        if (!mobileMenu.contains(e.target) && !menuBtn.contains(e.target)) {
             mobileMenu.classList.remove('active');
             menuBtn.classList.remove('active');
         }
-    });
+    }
 });
 
 // Utility functions
 const utils = {
-    // Format large numbers with commas
     formatNumber(num) {
         return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     },
 
-    // Debounce function for search input
     debounce(func, wait) {
         let timeout;
         return function executedFunction(...args) {
@@ -43,28 +45,16 @@ const utils = {
         };
     },
 
-    // Get Pokemon sprite URL from Showdown
     getShowdownSprite(pokemonName) {
         const name = pokemonName.toLowerCase().replace(/[^a-z0-9]/g, '');
         return `https://play.pokemonshowdown.com/sprites/gen5/${name}.png`;
     },
 
-    // Get Pokemon sprite URL (fallback)
-    getPokemonSprite(pokemonName) {
-        const name = pokemonName.toLowerCase()
-            .replace(/[^a-z0-9-]/g, '-')
-            .replace(/--+/g, '-')
-            .replace(/^-|-$/g, '');
-        return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${name}.png`;
-    },
-
-    // Copy text to clipboard
     async copyToClipboard(text) {
         try {
             await navigator.clipboard.writeText(text);
             return true;
         } catch (err) {
-            // Fallback for older browsers
             const textarea = document.createElement('textarea');
             textarea.value = text;
             textarea.style.position = 'fixed';
@@ -106,41 +96,16 @@ const typeColors = {
     'Stellar': '#44AACC'
 };
 
-// API wrapper
-const api = {
-    baseUrl: '/api',
+// Smogon API wrapper (using CORS proxy)
+const smogonApi = {
+    proxyUrl: 'https://api.allorigins.win/raw?url=',
+    baseUrl: 'https://www.smogon.com/stats',
 
-    async get(endpoint) {
-        try {
-            const response = await fetch(`${this.baseUrl}${endpoint}`);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return await response.json();
-        } catch (error) {
-            console.error('API Error:', error);
-            throw error;
-        }
-    },
-
-    async getMonths() {
-        return this.get('/months');
-    },
-
-    async getStats(formatCode, rating, month = null) {
-        let url = `/stats/${formatCode}?rating=${rating}`;
-        if (month) {
-            url += `&month=${month}`;
-        }
-        return this.get(url);
-    },
-
-    async getPokemon(formatCode, pokemonName, rating, month = null) {
-        let url = `/pokemon/${formatCode}/${encodeURIComponent(pokemonName)}?rating=${rating}`;
-        if (month) {
-            url += `&month=${month}`;
-        }
-        return this.get(url);
+    async fetchStats(format, rating, month) {
+        const url = `${this.baseUrl}/${month}/chaos/${format}-${rating}.json`;
+        const response = await fetch(`${this.proxyUrl}${encodeURIComponent(url)}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
     }
 };
 
@@ -151,13 +116,8 @@ const toast = {
         const toastEl = document.createElement('div');
         toastEl.className = `toast toast-${type}`;
         toastEl.textContent = message;
-
         container.appendChild(toastEl);
-
-        // Trigger animation
         setTimeout(() => toastEl.classList.add('show'), 10);
-
-        // Remove after duration
         setTimeout(() => {
             toastEl.classList.remove('show');
             setTimeout(() => toastEl.remove(), 300);
@@ -174,20 +134,12 @@ const toast = {
         return container;
     },
 
-    success(message) {
-        this.show(message, 'success');
-    },
-
-    error(message) {
-        this.show(message, 'error');
-    },
-
-    info(message) {
-        this.show(message, 'info');
-    }
+    success(message) { this.show(message, 'success'); },
+    error(message) { this.show(message, 'error'); },
+    info(message) { this.show(message, 'info'); }
 };
 
-// Add toast styles dynamically
+// Add toast styles
 const toastStyles = document.createElement('style');
 toastStyles.textContent = `
     .toast-container {
@@ -199,7 +151,6 @@ toastStyles.textContent = `
         flex-direction: column;
         gap: 10px;
     }
-
     .toast {
         padding: 12px 24px;
         border-radius: 8px;
@@ -210,30 +161,15 @@ toastStyles.textContent = `
         transition: all 0.3s ease;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
-
     .toast.show {
         opacity: 1;
         transform: translateX(0);
     }
-
-    .toast-success {
-        background: #009c3b;
-    }
-
-    .toast-error {
-        background: #dc3545;
-    }
-
-    .toast-info {
-        background: #0d6efd;
-    }
+    .toast-success { background: #009c3b; }
+    .toast-error { background: #dc3545; }
+    .toast-info { background: #0d6efd; }
 `;
 document.head.appendChild(toastStyles);
 
 // Export for global use
-window.PokeStats = {
-    utils,
-    api,
-    toast,
-    typeColors
-};
+window.PokeStats = { utils, smogonApi, toast, typeColors };
