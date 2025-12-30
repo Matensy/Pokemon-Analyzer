@@ -12,8 +12,8 @@ app = Flask(__name__)
 
 BASE_STATS_URL = "https://www.smogon.com/stats"
 
-# Chave da API Anthropic (opcional - para sugestões de time)
-ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
+# Chave da API Gemini (opcional - para sugestões de time)
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 
 FORMATS = {
     'vgc': {
@@ -21,8 +21,12 @@ FORMATS = {
         'formatos': {
             'gen9vgc2025regh': '[Gen 9] VGC 2025 Reg H',
             'gen9vgc2025reggbo3': '[Gen 9] VGC 2025 Reg G Bo3',
-            'gen9vgc2026regg': '[Gen 9] VGC 2026 Reg G',
-            'gen9vgc2026reggbo3': '[Gen 9] VGC 2026 Reg G Bo3',
+            'gen9vgc2025regg': '[Gen 9] VGC 2025 Reg G',
+            'gen9vgc2024regg': '[Gen 9] VGC 2024 Reg G',
+            'gen9vgc2024regf': '[Gen 9] VGC 2024 Reg F',
+            'gen9battlestadiumsingles': '[Gen 9] Battle Stadium Singles',
+            'gen9battlestadiumsinglesregulationg': '[Gen 9] BSS Reg G',
+            'gen9battlestadiumsinglesregulationh': '[Gen 9] BSS Reg H',
         }
     },
     'singles': {
@@ -496,9 +500,9 @@ def api_build():
 
 @app.route('/api/suggest-team', methods=['POST'])
 def api_suggest_team():
-    """Sugere complementos para o time usando LLM"""
-    if not ANTHROPIC_API_KEY:
-        return jsonify({'error': 'API key não configurada. Adicione ANTHROPIC_API_KEY nas variáveis de ambiente.'}), 400
+    """Sugere complementos para o time usando Gemini"""
+    if not GEMINI_API_KEY:
+        return jsonify({'error': 'API key não configurada. Adicione GEMINI_API_KEY nas variáveis de ambiente.'}), 400
 
     data = request.json
     current_team = data.get('team', [])
@@ -535,26 +539,23 @@ Responda em português brasileiro, em formato JSON com esta estrutura:
 
     try:
         response = requests.post(
-            'https://api.anthropic.com/v1/messages',
-            headers={
-                'Content-Type': 'application/json',
-                'x-api-key': ANTHROPIC_API_KEY,
-                'anthropic-version': '2023-06-01'
-            },
+            f'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}',
+            headers={'Content-Type': 'application/json'},
             json={
-                'model': 'claude-3-haiku-20240307',
-                'max_tokens': 1024,
-                'messages': [{'role': 'user', 'content': prompt}]
+                'contents': [{'parts': [{'text': prompt}]}],
+                'generationConfig': {
+                    'temperature': 0.7,
+                    'maxOutputTokens': 1024
+                }
             },
             timeout=30
         )
         response.raise_for_status()
 
         result = response.json()
-        content = result['content'][0]['text']
+        content = result['candidates'][0]['content']['parts'][0]['text']
 
         # Tentar parsear JSON da resposta
-        import json
         try:
             # Encontrar JSON na resposta
             json_match = re.search(r'\{[\s\S]*\}', content)
@@ -567,7 +568,7 @@ Responda em português brasileiro, em formato JSON com esta estrutura:
         return jsonify({'raw_response': content})
 
     except Exception as e:
-        return jsonify({'error': f'Erro ao consultar LLM: {str(e)}'}), 500
+        return jsonify({'error': f'Erro ao consultar Gemini: {str(e)}'}), 500
 
 
 @app.errorhandler(404)
