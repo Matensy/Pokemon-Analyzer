@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block title %}{{ pokemon_name }} - {{ format_name }} - PokeStatsBR{% endblock %}
+
+{% block head %}
+<style>
+    .breadcrumb { margin-bottom: 1rem; font-size: 0.875rem; color: var(--text-secondary); }
+    .breadcrumb a { color: var(--text-secondary); }
+
+    .pokemon-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .pokemon-header-main { display: flex; align-items: center; gap: 1.5rem; }
+    .pokemon-sprite-large { width: 96px; height: 96px; image-rendering: pixelated; }
+    .pokemon-title { font-size: 2rem; }
+    .pokemon-meta { display: flex; gap: 1.5rem; margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-secondary); }
+    .meta-rank { color: var(--secondary); font-weight: 600; }
+    .meta-usage { color: var(--primary); font-weight: 600; }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .stats-section {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.5rem;
+    }
+    .stats-section-title {
+        font-size: 1rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .stat-item { margin-bottom: 0.75rem; }
+    .stat-header { display: flex; justify-content: space-between; font-size: 0.875rem; margin-bottom: 0.25rem; }
+    .stat-bar { height: 8px; background: var(--bg-secondary); border-radius: 4px; overflow: hidden; }
+    .stat-fill { height: 100%; background: var(--primary); border-radius: 4px; }
+
+    .tera-types { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .tera-badge {
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: white;
+    }
+
+    .spreads-section, .teammates-section { grid-column: 1 / -1; }
+
+    .spreads-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+    .spread-card {
+        background: var(--bg-secondary);
+        border-radius: 8px;
+        padding: 1rem;
+    }
+    .spread-nature { font-weight: 600; color: var(--primary); }
+    .spread-percentage { font-size: 0.75rem; color: var(--text-muted); float: right; }
+    .spread-evs { font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem; font-family: monospace; }
+
+    .teammates-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 1rem;
+    }
+    .teammate-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 1rem;
+        background: var(--bg-secondary);
+        border-radius: 8px;
+        color: var(--text-primary);
+        transition: all 0.2s;
+    }
+    .teammate-card:hover { background: var(--bg-card-hover); transform: translateY(-2px); }
+    .teammate-sprite { width: 48px; height: 48px; image-rendering: pixelated; }
+    .teammate-name { font-size: 0.8rem; text-align: center; margin-top: 0.5rem; }
+    .teammate-score { font-size: 0.75rem; color: var(--primary); }
+
+    .modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 200;
+    }
+    .modal-content {
+        background: var(--bg-card);
+        border-radius: 12px;
+        width: 90%;
+        max-width: 500px;
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .modal-close { background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; }
+    .modal-body { padding: 1.5rem; }
+    .modal-body textarea {
+        width: 100%;
+        height: 200px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-family: monospace;
+        padding: 1rem;
+        resize: none;
+        margin-bottom: 1rem;
+    }
+    .modal-body .btn { width: 100%; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <nav class="breadcrumb">
+        <a href="/">Formatos</a> / <a href="/format/{{ format_code }}">{{ format_name }}</a> / <span>{{ pokemon_name }}</span>
+    </nav>
+
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>Carregando...</p>
+    </div>
+
+    <div id="error" class="error hidden">
+        <p>Pokémon não encontrado.</p>
+        <a href="/format/{{ format_code }}" class="btn">Voltar</a>
+    </div>
+
+    <div id="pokemon-details" class="hidden">
+        <header class="pokemon-header">
+            <div class="pokemon-header-main">
+                <img id="pokemon-sprite" class="pokemon-sprite-large" src="">
+                <div>
+                    <h1 id="pokemon-name" class="pokemon-title"></h1>
+                    <div class="pokemon-meta">
+                        <span>Rank: <span id="pokemon-rank" class="meta-rank"></span></span>
+                        <span>Uso: <span id="pokemon-usage" class="meta-usage"></span></span>
+                    </div>
+                </div>
+            </div>
+            <button id="export-btn" class="btn">Exportar para Showdown</button>
+        </header>
+
+        <div class="stats-grid">
+            <section class="stats-section">
+                <h2 class="stats-section-title">Movimentos</h2>
+                <div id="moves-list"></div>
+            </section>
+
+            <section class="stats-section">
+                <h2 class="stats-section-title">Itens</h2>
+                <div id="items-list"></div>
+            </section>
+
+            <section class="stats-section">
+                <h2 class="stats-section-title">Habilidades</h2>
+                <div id="abilities-list"></div>
+            </section>
+
+            <section class="stats-section" id="tera-section">
+                <h2 class="stats-section-title">Tipos Tera</h2>
+                <div id="tera-list" class="tera-types"></div>
+            </section>
+
+            <section class="stats-section spreads-section">
+                <h2 class="stats-section-title">Distribuições de EVs</h2>
+                <div id="spreads-list" class="spreads-list"></div>
+            </section>
+
+            <section class="stats-section teammates-section">
+                <h2 class="stats-section-title">Parceiros de Time</h2>
+                <div id="teammates-list" class="teammates-grid"></div>
+            </section>
+        </div>
+    </div>
+</div>
+
+<div id="export-modal" class="modal hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Exportar Set</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <textarea id="export-text" readonly></textarea>
+            <button class="btn" onclick="copySet()">Copiar</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const FORMAT_CODE = "{{ format_code }}";
+    const POKEMON_NAME = "{{ pokemon_name }}";
+    const urlParams = new URLSearchParams(window.location.search);
+    const RATING = urlParams.get('rating') || '1760';
+    const MONTH = urlParams.get('month') || '';
+
+    const typeColors = {
+        'Normal':'#A8A878','Fire':'#F08030','Water':'#6890F0','Electric':'#F8D030',
+        'Grass':'#78C850','Ice':'#98D8D8','Fighting':'#C03028','Poison':'#A040A0',
+        'Ground':'#E0C068','Flying':'#A890F0','Psychic':'#F85888','Bug':'#A8B820',
+        'Rock':'#B8A038','Ghost':'#705898','Dragon':'#7038F8','Dark':'#705848',
+        'Steel':'#B8B8D0','Fairy':'#EE99AC','Stellar':'#44AACC'
+    };
+
+    let pokemonData = null;
+
+    function getSprite(name) {
+        return `https://play.pokemonshowdown.com/sprites/gen5/${name.toLowerCase().replace(/[^a-z0-9]/g, '')}.png`;
+    }
+
+    function statBar(name, pct) {
+        return `<div class="stat-item">
+            <div class="stat-header"><span>${name}</span><span>${pct.toFixed(1)}%</span></div>
+            <div class="stat-bar"><div class="stat-fill" style="width:${Math.min(pct,100)}%"></div></div>
+        </div>`;
+    }
+
+    function teraBadge(type, pct) {
+        return `<div class="tera-badge" style="background:${typeColors[type]||'#888'}">${type} ${pct.toFixed(1)}%</div>`;
+    }
+
+    function spreadCard(s) {
+        const evs = [];
+        if(s.hp>0) evs.push(`${s.hp} HP`);
+        if(s.atk>0) evs.push(`${s.atk} Atk`);
+        if(s.def>0) evs.push(`${s.def} Def`);
+        if(s.spa>0) evs.push(`${s.spa} SpA`);
+        if(s.spd>0) evs.push(`${s.spd} SpD`);
+        if(s.spe>0) evs.push(`${s.spe} Spe`);
+        return `<div class="spread-card">
+            <span class="spread-nature">${s.nature}</span>
+            <span class="spread-percentage">${s.percentage.toFixed(1)}%</span>
+            <div class="spread-evs">${evs.join(' / ')}</div>
+        </div>`;
+    }
+
+    function teammateCard(t) {
+        return `<a href="/pokemon/${FORMAT_CODE}/${encodeURIComponent(t.name)}?rating=${RATING}&month=${MONTH}" class="teammate-card">
+            <img src="${getSprite(t.name)}" class="teammate-sprite" onerror="this.style.opacity='0.3'">
+            <span class="teammate-name">${t.name}</span>
+            <span class="teammate-score">${t.score.toFixed(1)}%</span>
+        </a>`;
+    }
+
+    function render(data) {
+        pokemonData = data;
+
+        document.getElementById('pokemon-sprite').src = getSprite(data.name);
+        document.getElementById('pokemon-name').textContent = data.name;
+        document.getElementById('pokemon-rank').textContent = '#' + data.rank;
+        document.getElementById('pokemon-usage').textContent = data.usage.toFixed(2) + '%';
+
+        document.getElementById('moves-list').innerHTML = data.moves.map(m => statBar(m.name, m.percentage)).join('');
+        document.getElementById('items-list').innerHTML = data.items.map(i => statBar(i.name, i.percentage)).join('');
+        document.getElementById('abilities-list').innerHTML = data.abilities.map(a => statBar(a.name, a.percentage)).join('');
+
+        if (data.tera_types && data.tera_types.length > 0) {
+            document.getElementById('tera-list').innerHTML = data.tera_types.map(t => teraBadge(t.name, t.percentage)).join('');
+            document.getElementById('tera-section').classList.remove('hidden');
+        } else {
+            document.getElementById('tera-section').classList.add('hidden');
+        }
+
+        document.getElementById('spreads-list').innerHTML = data.spreads.map(s => spreadCard(s)).join('');
+        document.getElementById('teammates-list').innerHTML = data.teammates.map(t => teammateCard(t)).join('');
+    }
+
+    async function loadData() {
+        try {
+            let url = `/api/pokemon/${FORMAT_CODE}/${encodeURIComponent(POKEMON_NAME)}?rating=${RATING}`;
+            if (MONTH) url += `&month=${MONTH}`;
+
+            const res = await fetch(url);
+            if (!res.ok) throw new Error();
+
+            const data = await res.json();
+            render(data);
+
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('pokemon-details').classList.remove('hidden');
+        } catch (e) {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('error').classList.remove('hidden');
+        }
+    }
+
+    function openModal() {
+        if (!pokemonData) return;
+        document.getElementById('export-text').value = pokemonData.showdown_set;
+        document.getElementById('export-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+        document.getElementById('export-modal').classList.add('hidden');
+    }
+
+    function copySet() {
+        const ta = document.getElementById('export-text');
+        ta.select();
+        document.execCommand('copy');
+        alert('Copiado!');
+    }
+
+    document.getElementById('export-btn').addEventListener('click', openModal);
+    document.getElementById('export-modal').addEventListener('click', e => { if(e.target.id === 'export-modal') closeModal(); });
+
+    loadData();
+</script>
+{% endblock %}

@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}{{ format_name }} - PokeStatsBR{% endblock %}
+
+{% block head %}
+<style>
+    .breadcrumb { margin-bottom: 1rem; font-size: 0.875rem; color: var(--text-secondary); }
+    .breadcrumb a { color: var(--text-secondary); }
+    .breadcrumb a:hover { color: var(--primary); }
+
+    .format-header { margin-bottom: 2rem; }
+    .format-header h1 { font-size: 2rem; }
+    .format-header p { color: var(--text-muted); font-family: monospace; }
+
+    .controls { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
+    .control-group label { display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem; }
+    .select, .input {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        padding: 0.5rem 1rem;
+        min-width: 150px;
+    }
+    .input { min-width: 200px; }
+
+    .stats-info {
+        display: flex; gap: 2rem;
+        padding: 1rem;
+        background: var(--bg-card);
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+    }
+    .stats-info strong { color: var(--text-primary); }
+
+    .pokemon-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1rem;
+    }
+
+    .pokemon-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        transition: all 0.2s;
+    }
+    .pokemon-card:hover {
+        background: var(--bg-card-hover);
+        border-color: var(--primary);
+        transform: translateY(-2px);
+    }
+
+    .pokemon-rank { font-weight: 700; color: var(--text-muted); min-width: 36px; }
+    .pokemon-sprite { width: 56px; height: 56px; image-rendering: pixelated; }
+    .pokemon-info { flex: 1; }
+    .pokemon-name { font-weight: 600; display: block; margin-bottom: 0.25rem; }
+
+    .usage-bar { flex: 1; height: 6px; background: var(--bg-secondary); border-radius: 3px; overflow: hidden; }
+    .usage-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--secondary)); }
+    .usage-text { font-size: 0.875rem; font-weight: 600; color: var(--primary); min-width: 50px; text-align: right; }
+    .pokemon-usage { display: flex; align-items: center; gap: 0.5rem; }
+
+    .no-results { grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-secondary); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <nav class="breadcrumb">
+        <a href="/">Formatos</a> / <span>{{ format_name }}</span>
+    </nav>
+
+    <header class="format-header">
+        <h1>{{ format_name }}</h1>
+        <p>{{ format_code }}</p>
+    </header>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>Rating:</label>
+            <select id="rating-select" class="select">
+                {% for rating in ratings %}
+                <option value="{{ rating }}" {% if loop.last %}selected{% endif %}>
+                    {{ rating }}{% if rating == 0 %} (Todos){% elif loop.last %} (Top){% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Mês:</label>
+            <select id="month-select" class="select">
+                {% for month in months %}
+                <option value="{{ month }}" {% if loop.first %}selected{% endif %}>{{ month }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Buscar:</label>
+            <input type="text" id="search-input" class="input" placeholder="Nome do Pokémon...">
+        </div>
+    </div>
+
+    <div id="stats-info" class="stats-info">
+        <span><strong id="total-pokemon">-</strong> Pokémon</span>
+        <span><strong id="total-battles">-</strong> Batalhas</span>
+        <span>Mês: <strong id="current-month">-</strong></span>
+    </div>
+
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>Carregando dados do Smogon...</p>
+    </div>
+
+    <div id="error" class="error hidden">
+        <p id="error-msg">Erro ao carregar dados.</p>
+        <button onclick="loadData()" class="btn">Tentar Novamente</button>
+    </div>
+
+    <div id="pokemon-list" class="pokemon-list hidden"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const FORMAT_CODE = "{{ format_code }}";
+    let currentData = null;
+
+    function getSprite(name) {
+        return `https://play.pokemonshowdown.com/sprites/gen5/${name.toLowerCase().replace(/[^a-z0-9]/g, '')}.png`;
+    }
+
+    function formatNumber(n) {
+        return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    function createCard(p) {
+        const rating = document.getElementById('rating-select').value;
+        const month = document.getElementById('month-select').value;
+        return `
+            <a href="/pokemon/${FORMAT_CODE}/${encodeURIComponent(p.name)}?rating=${rating}&month=${month}" class="pokemon-card">
+                <div class="pokemon-rank">#${p.rank}</div>
+                <img src="${getSprite(p.name)}" class="pokemon-sprite" onerror="this.style.opacity='0.3'">
+                <div class="pokemon-info">
+                    <span class="pokemon-name">${p.name}</span>
+                    <div class="pokemon-usage">
+                        <div class="usage-bar"><div class="usage-fill" style="width:${Math.min(p.usage, 100)}%"></div></div>
+                        <span class="usage-text">${p.usage.toFixed(2)}%</span>
+                    </div>
+                </div>
+            </a>
+        `;
+    }
+
+    function render(data) {
+        const container = document.getElementById('pokemon-list');
+        const search = document.getElementById('search-input').value.toLowerCase();
+
+        let list = data.ranked_list || [];
+        if (search) {
+            list = list.filter(p => p.name.toLowerCase().includes(search));
+        }
+
+        if (list.length === 0) {
+            container.innerHTML = '<p class="no-results">Nenhum Pokémon encontrado.</p>';
+        } else {
+            container.innerHTML = list.map(p => createCard(data.pokemon[p.name])).join('');
+        }
+    }
+
+    async function loadData() {
+        const rating = document.getElementById('rating-select').value;
+        const month = document.getElementById('month-select').value;
+
+        document.getElementById('loading').classList.remove('hidden');
+        document.getElementById('error').classList.add('hidden');
+        document.getElementById('pokemon-list').classList.add('hidden');
+
+        try {
+            const res = await fetch(`/api/stats/${FORMAT_CODE}?rating=${rating}&month=${month}`);
+            if (!res.ok) throw new Error('Erro ' + res.status);
+
+            currentData = await res.json();
+
+            document.getElementById('total-pokemon').textContent = currentData.ranked_list.length;
+            document.getElementById('total-battles').textContent = formatNumber(currentData.info['number of battles'] || 0);
+            document.getElementById('current-month').textContent = currentData.meta.month;
+
+            render(currentData);
+
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('pokemon-list').classList.remove('hidden');
+        } catch (e) {
+            console.error(e);
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('error-msg').textContent = 'Erro ao carregar dados: ' + e.message;
+            document.getElementById('error').classList.remove('hidden');
+        }
+    }
+
+    document.getElementById('rating-select').addEventListener('change', loadData);
+    document.getElementById('month-select').addEventListener('change', loadData);
+    document.getElementById('search-input').addEventListener('input', () => { if (currentData) render(currentData); });
+
+    loadData();
+</script>
+{% endblock %}
