@@ -1,0 +1,921 @@
+{% extends "base.html" %}
+
+{% block title %}{{ pokemon_name }} - {{ format_name }} - PokeStatsBR{% endblock %}
+
+{% block head %}
+<style>
+    .breadcrumb { margin-bottom: 1rem; font-size: 0.875rem; color: var(--text-secondary); }
+    .breadcrumb a { color: var(--text-secondary); }
+
+    .pokemon-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .pokemon-header-main { display: flex; align-items: center; gap: 1.5rem; }
+    .pokemon-sprite-large { width: 96px; height: 96px; image-rendering: pixelated; background: var(--bg-secondary); border-radius: 12px; }
+    .pokemon-title { font-size: 2rem; }
+    .pokemon-meta { display: flex; gap: 1.5rem; margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-secondary); }
+    .meta-rank { color: var(--secondary); font-weight: 600; }
+    .meta-usage { color: var(--primary); font-weight: 600; }
+
+    .header-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .stats-section {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.5rem;
+    }
+    .stats-section-title {
+        font-size: 1rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .stat-item { margin-bottom: 0.75rem; cursor: pointer; padding: 0.25rem; border-radius: 4px; transition: background 0.2s; }
+    .stat-item:hover { background: var(--bg-secondary); }
+    .stat-item.selected { background: rgba(0, 156, 59, 0.2); border-left: 3px solid var(--primary); }
+    .stat-header { display: flex; justify-content: space-between; font-size: 0.875rem; margin-bottom: 0.25rem; }
+    .stat-bar { height: 8px; background: var(--bg-secondary); border-radius: 4px; overflow: hidden; }
+    .stat-fill { height: 100%; background: var(--primary); border-radius: 4px; }
+
+    .tera-types { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .tera-badge {
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: white;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .tera-badge:hover { transform: scale(1.05); }
+    .tera-badge.selected { box-shadow: 0 0 0 3px var(--secondary); }
+
+    .spreads-section, .teammates-section, .weaknesses-section { grid-column: 1 / -1; }
+
+    /* Type Weaknesses */
+    .type-info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+    .type-info-block {
+        background: var(--bg-secondary);
+        border-radius: 8px;
+        padding: 1rem;
+    }
+    .type-info-block h4 {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-bottom: 0.75rem;
+        text-transform: uppercase;
+    }
+    .type-info-block.weak h4 { color: #ff6b6b; }
+    .type-info-block.resist h4 { color: #51cf66; }
+    .type-info-block.immune h4 { color: #339af0; }
+    .type-badges { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .type-badge {
+        padding: 0.35rem 0.6rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: white;
+    }
+    .pokemon-types {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .pokemon-type-badge {
+        padding: 0.35rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: white;
+    }
+
+    .spreads-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+    .spread-card {
+        background: var(--bg-secondary);
+        border-radius: 8px;
+        padding: 1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 2px solid transparent;
+    }
+    .spread-card:hover { border-color: var(--primary); }
+    .spread-card.selected { border-color: var(--primary); background: rgba(0, 156, 59, 0.1); }
+    .spread-nature { font-weight: 600; color: var(--primary); }
+    .spread-percentage { font-size: 0.75rem; color: var(--text-muted); float: right; }
+    .spread-evs { font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem; font-family: monospace; }
+
+    .teammates-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 1rem;
+    }
+    .teammate-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 1rem;
+        background: var(--bg-secondary);
+        border-radius: 8px;
+        color: var(--text-primary);
+        transition: all 0.2s;
+    }
+    .teammate-card:hover { background: var(--bg-card-hover); transform: translateY(-2px); }
+    .teammate-sprite { width: 48px; height: 48px; image-rendering: pixelated; }
+    .teammate-name { font-size: 0.8rem; text-align: center; margin-top: 0.5rem; }
+    .teammate-score { font-size: 0.75rem; color: var(--primary); }
+
+    /* Builder Section */
+    .builder-section {
+        grid-column: 1 / -1;
+        background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
+        border: 2px solid var(--primary);
+    }
+    .builder-section .stats-section-title { color: var(--primary); }
+
+    .builder-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .builder-group label {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+    }
+
+    .builder-select {
+        width: 100%;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        padding: 0.75rem;
+        font-size: 0.875rem;
+    }
+
+    .ev-inputs {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.5rem;
+    }
+    .ev-input-group { text-align: center; }
+    .ev-input-group span { display: block; font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+    .ev-input {
+        width: 100%;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        color: var(--text-primary);
+        padding: 0.5rem;
+        text-align: center;
+        font-size: 0.875rem;
+    }
+    .ev-total { text-align: center; margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted); }
+    .ev-total.over { color: #ff4444; }
+
+    .moves-inputs { display: flex; flex-direction: column; gap: 0.5rem; }
+
+    .export-preview {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1rem;
+        font-family: monospace;
+        font-size: 0.8rem;
+        white-space: pre-wrap;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 200;
+    }
+    .modal-content {
+        background: var(--bg-card);
+        border-radius: 12px;
+        width: 90%;
+        max-width: 500px;
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .modal-close { background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; }
+    .modal-body { padding: 1.5rem; }
+    .modal-body textarea {
+        width: 100%;
+        height: 200px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-family: monospace;
+        padding: 1rem;
+        resize: none;
+        margin-bottom: 1rem;
+    }
+    .modal-body .btn { width: 100%; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <nav class="breadcrumb">
+        <a href="/">Formatos</a> / <a href="/format/{{ format_code }}">{{ format_name }}</a> / <span>{{ pokemon_name }}</span>
+    </nav>
+
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>Carregando...</p>
+    </div>
+
+    <div id="error" class="error hidden">
+        <p>Pokémon não encontrado.</p>
+        <a href="/format/{{ format_code }}" class="btn">Voltar</a>
+    </div>
+
+    <div id="pokemon-details" class="hidden">
+        <header class="pokemon-header">
+            <div class="pokemon-header-main">
+                <img id="pokemon-sprite" class="pokemon-sprite-large" src="">
+                <div>
+                    <h1 id="pokemon-name" class="pokemon-title"></h1>
+                    <div class="pokemon-meta">
+                        <span>Rank: <span id="pokemon-rank" class="meta-rank"></span></span>
+                        <span>Uso: <span id="pokemon-usage" class="meta-usage"></span></span>
+                    </div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button id="export-btn" class="btn">Exportar Set Padrão</button>
+                <button id="export-custom-btn" class="btn" style="background: var(--secondary); color: #000;">Exportar Customizado</button>
+            </div>
+        </header>
+
+        <div class="stats-grid">
+            <!-- Builder Section -->
+            <section class="stats-section builder-section">
+                <h2 class="stats-section-title">Construir Set Customizado</h2>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                    Clique nos itens abaixo para selecionar, ou customize manualmente:
+                </p>
+
+                <div class="builder-grid">
+                    <div class="builder-group">
+                        <label>Item</label>
+                        <select id="build-item" class="builder-select">
+                            <option value="">-- Selecione --</option>
+                        </select>
+                    </div>
+
+                    <div class="builder-group">
+                        <label>Ability</label>
+                        <select id="build-ability" class="builder-select">
+                            <option value="">-- Selecione --</option>
+                        </select>
+                    </div>
+
+                    <div class="builder-group">
+                        <label>Tera Type</label>
+                        <select id="build-tera" class="builder-select">
+                            <option value="">-- Selecione --</option>
+                            {% for tera in tera_types %}
+                            <option value="{{ tera }}">{{ tera }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="builder-group">
+                        <label>Nature</label>
+                        <select id="build-nature" class="builder-select">
+                            <option value="">-- Selecione --</option>
+                            {% for nature in natures %}
+                            <option value="{{ nature }}">{{ nature }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="builder-group">
+                        <label>EVs (Total: 510)</label>
+                        <div class="ev-inputs">
+                            <div class="ev-input-group"><span>HP</span><input type="number" id="ev-hp" class="ev-input" min="0" max="252" value="0"></div>
+                            <div class="ev-input-group"><span>Atk</span><input type="number" id="ev-atk" class="ev-input" min="0" max="252" value="0"></div>
+                            <div class="ev-input-group"><span>Def</span><input type="number" id="ev-def" class="ev-input" min="0" max="252" value="0"></div>
+                            <div class="ev-input-group"><span>SpA</span><input type="number" id="ev-spa" class="ev-input" min="0" max="252" value="0"></div>
+                            <div class="ev-input-group"><span>SpD</span><input type="number" id="ev-spd" class="ev-input" min="0" max="252" value="0"></div>
+                            <div class="ev-input-group"><span>Spe</span><input type="number" id="ev-spe" class="ev-input" min="0" max="252" value="0"></div>
+                        </div>
+                        <div id="ev-total" class="ev-total">Total: 0/510</div>
+                    </div>
+
+                    <div class="builder-group">
+                        <label>IVs (0-31, deixe 31 para omitir)</label>
+                        <div class="ev-inputs">
+                            <div class="ev-input-group"><span>HP</span><input type="number" id="iv-hp" class="ev-input" min="0" max="31" value="31"></div>
+                            <div class="ev-input-group"><span>Atk</span><input type="number" id="iv-atk" class="ev-input" min="0" max="31" value="31"></div>
+                            <div class="ev-input-group"><span>Def</span><input type="number" id="iv-def" class="ev-input" min="0" max="31" value="31"></div>
+                            <div class="ev-input-group"><span>SpA</span><input type="number" id="iv-spa" class="ev-input" min="0" max="31" value="31"></div>
+                            <div class="ev-input-group"><span>SpD</span><input type="number" id="iv-spd" class="ev-input" min="0" max="31" value="31"></div>
+                            <div class="ev-input-group"><span>Spe</span><input type="number" id="iv-spe" class="ev-input" min="0" max="31" value="31"></div>
+                        </div>
+                    </div>
+
+                    <div class="builder-group" style="grid-column: 1 / -1;">
+                        <label>Moves (selecione 4)</label>
+                        <div class="moves-inputs">
+                            <select id="build-move1" class="builder-select"><option value="">-- Move 1 --</option></select>
+                            <select id="build-move2" class="builder-select"><option value="">-- Move 2 --</option></select>
+                            <select id="build-move3" class="builder-select"><option value="">-- Move 3 --</option></select>
+                            <select id="build-move4" class="builder-select"><option value="">-- Move 4 --</option></select>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 1.5rem;">
+                    <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem;">PREVIEW</label>
+                    <div id="build-preview" class="export-preview">Selecione as opções acima...</div>
+                </div>
+            </section>
+
+            <!-- Moves -->
+            <section class="stats-section">
+                <h2 class="stats-section-title">Movimentos</h2>
+                <div id="moves-list"></div>
+            </section>
+
+            <!-- Items -->
+            <section class="stats-section">
+                <h2 class="stats-section-title">Itens</h2>
+                <div id="items-list"></div>
+            </section>
+
+            <!-- Abilities -->
+            <section class="stats-section">
+                <h2 class="stats-section-title">Habilidades</h2>
+                <div id="abilities-list"></div>
+            </section>
+
+            <!-- Tera Types -->
+            <section class="stats-section" id="tera-section">
+                <h2 class="stats-section-title">Tipos Tera</h2>
+                <div id="tera-list" class="tera-types"></div>
+            </section>
+
+            <!-- EV Spreads -->
+            <section class="stats-section spreads-section">
+                <h2 class="stats-section-title">Distribuições de EVs (clique para usar)</h2>
+                <div id="spreads-list" class="spreads-list"></div>
+            </section>
+
+            <!-- Teammates -->
+            <section class="stats-section teammates-section">
+                <h2 class="stats-section-title">Parceiros de Time</h2>
+                <div id="teammates-list" class="teammates-grid"></div>
+            </section>
+
+            <!-- Type Weaknesses -->
+            <section class="stats-section weaknesses-section" id="weaknesses-section">
+                <h2 class="stats-section-title">Tipos e Fraquezas</h2>
+                <div id="pokemon-types-display" class="pokemon-types" style="margin-bottom: 1rem;"></div>
+                <div class="type-info-grid">
+                    <div class="type-info-block weak">
+                        <h4>Fraco contra (x2/x4)</h4>
+                        <div id="weaknesses-list" class="type-badges"></div>
+                    </div>
+                    <div class="type-info-block resist">
+                        <h4>Resistente a (x0.5/x0.25)</h4>
+                        <div id="resistances-list" class="type-badges"></div>
+                    </div>
+                    <div class="type-info-block immune">
+                        <h4>Imune a (x0)</h4>
+                        <div id="immunities-list" class="type-badges"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+
+<div id="export-modal" class="modal hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Exportar Set</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <textarea id="export-text" readonly></textarea>
+            <button class="btn" onclick="copySet()">Copiar para Área de Transferência</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const FORMAT_CODE = "{{ format_code }}";
+    const POKEMON_NAME = "{{ pokemon_name }}";
+    const urlParams = new URLSearchParams(window.location.search);
+    const RATING = urlParams.get('rating') || '1760';
+    const MONTH = urlParams.get('month') || '';
+
+    const typeColors = {
+        'Normal':'#A8A878','Fire':'#F08030','Water':'#6890F0','Electric':'#F8D030',
+        'Grass':'#78C850','Ice':'#98D8D8','Fighting':'#C03028','Poison':'#A040A0',
+        'Ground':'#E0C068','Flying':'#A890F0','Psychic':'#F85888','Bug':'#A8B820',
+        'Rock':'#B8A038','Ghost':'#705898','Dragon':'#7038F8','Dark':'#705848',
+        'Steel':'#B8B8D0','Fairy':'#EE99AC','Stellar':'#44AACC'
+    };
+
+    // Dados de efetividade de tipo (passados do servidor)
+    const TYPE_WEAKNESSES = {{ type_weaknesses | tojson | safe }};
+    const TYPE_RESISTANCES = {{ type_resistances | tojson | safe }};
+    const TYPE_IMMUNITIES = {{ type_immunities | tojson | safe }};
+
+    let pokemonData = null;
+    let pokemonTypes = [];
+
+    function getSprite(name, spriteName) {
+        const cleanName = spriteName || name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return `https://play.pokemonshowdown.com/sprites/gen5/${cleanName}.png`;
+    }
+
+    function statBar(name, pct, type, index) {
+        return `<div class="stat-item" data-type="${type}" data-value="${name}" data-index="${index}" onclick="selectStat(this)">
+            <div class="stat-header"><span>${name}</span><span>${pct.toFixed(1)}%</span></div>
+            <div class="stat-bar"><div class="stat-fill" style="width:${Math.min(pct,100)}%"></div></div>
+        </div>`;
+    }
+
+    function teraBadge(type, pct) {
+        return `<div class="tera-badge" style="background:${typeColors[type]||'#888'}" data-type="${type}" onclick="selectTera(this)">${type} ${pct.toFixed(1)}%</div>`;
+    }
+
+    function spreadCard(s, index) {
+        const evs = [];
+        if(s.hp>0) evs.push(`${s.hp} HP`);
+        if(s.atk>0) evs.push(`${s.atk} Atk`);
+        if(s.def>0) evs.push(`${s.def} Def`);
+        if(s.spa>0) evs.push(`${s.spa} SpA`);
+        if(s.spd>0) evs.push(`${s.spd} SpD`);
+        if(s.spe>0) evs.push(`${s.spe} Spe`);
+        return `<div class="spread-card" data-index="${index}" onclick="selectSpread(${index})">
+            <span class="spread-nature">${s.nature}</span>
+            <span class="spread-percentage">${s.percentage.toFixed(1)}%</span>
+            <div class="spread-evs">${evs.join(' / ')}</div>
+        </div>`;
+    }
+
+    function teammateCard(t) {
+        const sprite = getSprite(t.name);
+        return `<a href="/pokemon/${FORMAT_CODE}/${encodeURIComponent(t.name)}?rating=${RATING}&month=${MONTH}" class="teammate-card">
+            <img src="${sprite}" class="teammate-sprite" onerror="this.style.opacity='0.3'">
+            <span class="teammate-name">${t.name}</span>
+            <span class="teammate-score">${t.score.toFixed(1)}%</span>
+        </a>`;
+    }
+
+    function typeBadge(type, multiplier = null) {
+        const color = typeColors[type] || '#888';
+        const suffix = multiplier ? ` (x${multiplier})` : '';
+        return `<span class="type-badge" style="background:${color}">${type}${suffix}</span>`;
+    }
+
+    async function fetchPokemonTypes(pokemonName) {
+        // Normalizar nome para PokeAPI
+        let apiName = pokemonName.toLowerCase()
+            .replace(/[^a-z0-9-]/g, '')
+            .replace('--', '-');
+
+        // Alguns nomes especiais
+        const nameMap = {
+            'urshifurapidstrike': 'urshifu-rapid-strike',
+            'urshifusinglestrike': 'urshifu',
+            'ogerponhearthflame': 'ogerpon-hearthflame-mask',
+            'ogerponwellspring': 'ogerpon-wellspring-mask',
+            'ogerponcornerstone': 'ogerpon-cornerstone-mask',
+            'terapagosstellar': 'terapagos-stellar',
+            'calyrexice': 'calyrex-ice-rider',
+            'calyrexshadow': 'calyrex-shadow-rider',
+            'zaciancrowned': 'zacian-crowned',
+            'zamazentacrowned': 'zamazenta-crowned',
+            'kyuremblack': 'kyurem-black',
+            'kyuremwhite': 'kyurem-white',
+            'necrozmaduskmane': 'necrozma-dusk',
+            'necrozmadawnwings': 'necrozma-dawn',
+            'giratinaorigin': 'giratina-origin',
+            'tornadustherian': 'tornadus-therian',
+            'thundurustherian': 'thundurus-therian',
+            'landorustherian': 'landorus-therian',
+            'enamorustherian': 'enamorus-therian',
+            'indeedeef': 'indeedee-female',
+            'meowsticf': 'meowstic-female',
+            'basculegionf': 'basculegion-female',
+            'oinkolognef': 'oinkologne-female',
+            'ragingbolt': 'raging-bolt',
+            'ironcrown': 'iron-crown',
+            'ironboulder': 'iron-boulder',
+            'gougingfire': 'gouging-fire',
+            'walkingwake': 'walking-wake',
+            'ironleaves': 'iron-leaves',
+            'ironhands': 'iron-hands',
+            'ironbundle': 'iron-bundle',
+            'ironjugulis': 'iron-jugulis',
+            'ironmoth': 'iron-moth',
+            'ironthorns': 'iron-thorns',
+            'ironvaliant': 'iron-valiant',
+            'irontreads': 'iron-treads',
+            'roaringmoon': 'roaring-moon',
+            'fluttermane': 'flutter-mane',
+            'sandyshocks': 'sandy-shocks',
+            'screamtail': 'scream-tail',
+            'brutebonnet': 'brute-bonnet',
+            'slitherwing': 'slither-wing',
+            'greattusk': 'great-tusk',
+            'chiyu': 'chi-yu',
+            'chienpao': 'chien-pao',
+            'tinglu': 'ting-lu',
+            'wochien': 'wo-chien',
+            'rotomwash': 'rotom-wash',
+            'rotomheat': 'rotom-heat',
+            'rotommow': 'rotom-mow',
+            'rotomfan': 'rotom-fan',
+            'rotomfrost': 'rotom-frost',
+            'wormadamsandy': 'wormadam-sandy',
+            'wormadamtrash': 'wormadam-trash',
+            'deoxysattack': 'deoxys-attack',
+            'deoxysdefense': 'deoxys-defense',
+            'deoxysspeed': 'deoxys-speed',
+            'shayminsky': 'shaymin-sky',
+            'hoopaunbound': 'hoopa-unbound',
+            'meloettapirouette': 'meloetta-pirouette',
+            'keldeoresolute': 'keldeo-resolute',
+        };
+
+        if (nameMap[apiName]) {
+            apiName = nameMap[apiName];
+        }
+
+        try {
+            const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${apiName}`);
+            if (!response.ok) throw new Error('Pokemon not found');
+            const data = await response.json();
+            return data.types.map(t => t.type.name.charAt(0).toUpperCase() + t.type.name.slice(1));
+        } catch (e) {
+            console.warn(`Could not fetch types for ${pokemonName}:`, e);
+            return [];
+        }
+    }
+
+    function calculateTypeEffectiveness(types) {
+        const ALL_TYPES = ['Normal', 'Fire', 'Water', 'Electric', 'Grass', 'Ice',
+            'Fighting', 'Poison', 'Ground', 'Flying', 'Psychic', 'Bug',
+            'Rock', 'Ghost', 'Dragon', 'Dark', 'Steel', 'Fairy'];
+
+        const multipliers = {};
+        ALL_TYPES.forEach(t => multipliers[t] = 1);
+
+        // Calcular multiplicadores para cada tipo ofensivo
+        types.forEach(defType => {
+            const weakTo = TYPE_WEAKNESSES[defType] || [];
+            const resistTo = TYPE_RESISTANCES[defType] || [];
+            const immuneTo = TYPE_IMMUNITIES[defType] || [];
+
+            weakTo.forEach(t => multipliers[t] *= 2);
+            resistTo.forEach(t => multipliers[t] *= 0.5);
+            immuneTo.forEach(t => multipliers[t] = 0);
+        });
+
+        const weaknesses = [];
+        const resistances = [];
+        const immunities = [];
+
+        for (const [type, mult] of Object.entries(multipliers)) {
+            if (mult === 0) {
+                immunities.push({type, mult: 0});
+            } else if (mult >= 2) {
+                weaknesses.push({type, mult});
+            } else if (mult < 1) {
+                resistances.push({type, mult});
+            }
+        }
+
+        // Ordenar por multiplicador
+        weaknesses.sort((a, b) => b.mult - a.mult);
+        resistances.sort((a, b) => a.mult - b.mult);
+
+        return {weaknesses, resistances, immunities};
+    }
+
+    async function renderTypeWeaknesses(pokemonName) {
+        const typesDisplay = document.getElementById('pokemon-types-display');
+        const weaknessesList = document.getElementById('weaknesses-list');
+        const resistancesList = document.getElementById('resistances-list');
+        const immunitiesList = document.getElementById('immunities-list');
+
+        typesDisplay.innerHTML = '<span style="color:var(--text-muted)">Carregando tipos...</span>';
+
+        const types = await fetchPokemonTypes(pokemonName);
+        pokemonTypes = types;
+
+        if (types.length === 0) {
+            typesDisplay.innerHTML = '<span style="color:var(--text-muted)">Tipos não encontrados</span>';
+            weaknessesList.innerHTML = '<span style="color:var(--text-muted)">-</span>';
+            resistancesList.innerHTML = '<span style="color:var(--text-muted)">-</span>';
+            immunitiesList.innerHTML = '<span style="color:var(--text-muted)">-</span>';
+            return;
+        }
+
+        // Mostrar tipos do Pokemon
+        typesDisplay.innerHTML = types.map(t =>
+            `<span class="pokemon-type-badge" style="background:${typeColors[t] || '#888'}">${t}</span>`
+        ).join('');
+
+        // Calcular e mostrar efetividades
+        const {weaknesses, resistances, immunities} = calculateTypeEffectiveness(types);
+
+        if (weaknesses.length > 0) {
+            weaknessesList.innerHTML = weaknesses.map(w => typeBadge(w.type, w.mult)).join('');
+        } else {
+            weaknessesList.innerHTML = '<span style="color:var(--text-muted)">Nenhuma</span>';
+        }
+
+        if (resistances.length > 0) {
+            resistancesList.innerHTML = resistances.map(r => typeBadge(r.type, r.mult)).join('');
+        } else {
+            resistancesList.innerHTML = '<span style="color:var(--text-muted)">Nenhuma</span>';
+        }
+
+        if (immunities.length > 0) {
+            immunitiesList.innerHTML = immunities.map(i => typeBadge(i.type)).join('');
+        } else {
+            immunitiesList.innerHTML = '<span style="color:var(--text-muted)">Nenhuma</span>';
+        }
+    }
+
+    // Selection functions
+    function selectStat(el) {
+        const type = el.dataset.type;
+        const value = el.dataset.value;
+
+        // Toggle selection
+        el.classList.toggle('selected');
+
+        if (type === 'item') {
+            document.getElementById('build-item').value = el.classList.contains('selected') ? value : '';
+        } else if (type === 'ability') {
+            document.getElementById('build-ability').value = el.classList.contains('selected') ? value : '';
+        } else if (type === 'move') {
+            // Add to next empty move slot
+            const moves = ['build-move1', 'build-move2', 'build-move3', 'build-move4'];
+            if (el.classList.contains('selected')) {
+                for (const m of moves) {
+                    if (!document.getElementById(m).value) {
+                        document.getElementById(m).value = value;
+                        break;
+                    }
+                }
+            }
+        }
+
+        updatePreview();
+    }
+
+    function selectTera(el) {
+        document.querySelectorAll('.tera-badge').forEach(b => b.classList.remove('selected'));
+        el.classList.add('selected');
+        document.getElementById('build-tera').value = el.dataset.type;
+        updatePreview();
+    }
+
+    function selectSpread(index) {
+        document.querySelectorAll('.spread-card').forEach(c => c.classList.remove('selected'));
+        document.querySelectorAll('.spread-card')[index].classList.add('selected');
+
+        const spread = pokemonData.spreads[index];
+        document.getElementById('ev-hp').value = spread.hp;
+        document.getElementById('ev-atk').value = spread.atk;
+        document.getElementById('ev-def').value = spread.def;
+        document.getElementById('ev-spa').value = spread.spa;
+        document.getElementById('ev-spd').value = spread.spd;
+        document.getElementById('ev-spe').value = spread.spe;
+        document.getElementById('build-nature').value = spread.nature;
+
+        updateEvTotal();
+        updatePreview();
+    }
+
+    function updateEvTotal() {
+        const total = ['hp', 'atk', 'def', 'spa', 'spd', 'spe']
+            .reduce((sum, stat) => sum + (parseInt(document.getElementById('ev-' + stat).value) || 0), 0);
+        const el = document.getElementById('ev-total');
+        el.textContent = `Total: ${total}/510`;
+        el.classList.toggle('over', total > 510);
+    }
+
+    function updatePreview() {
+        const pokemon = POKEMON_NAME;
+        const item = document.getElementById('build-item').value;
+        const ability = document.getElementById('build-ability').value;
+        const tera = document.getElementById('build-tera').value;
+        const nature = document.getElementById('build-nature').value;
+
+        const evs = {
+            hp: parseInt(document.getElementById('ev-hp').value) || 0,
+            atk: parseInt(document.getElementById('ev-atk').value) || 0,
+            def: parseInt(document.getElementById('ev-def').value) || 0,
+            spa: parseInt(document.getElementById('ev-spa').value) || 0,
+            spd: parseInt(document.getElementById('ev-spd').value) || 0,
+            spe: parseInt(document.getElementById('ev-spe').value) || 0,
+        };
+
+        const ivs = {
+            hp: parseInt(document.getElementById('iv-hp').value),
+            atk: parseInt(document.getElementById('iv-atk').value),
+            def: parseInt(document.getElementById('iv-def').value),
+            spa: parseInt(document.getElementById('iv-spa').value),
+            spd: parseInt(document.getElementById('iv-spd').value),
+            spe: parseInt(document.getElementById('iv-spe').value),
+        };
+
+        const moves = [
+            document.getElementById('build-move1').value,
+            document.getElementById('build-move2').value,
+            document.getElementById('build-move3').value,
+            document.getElementById('build-move4').value,
+        ].filter(m => m);
+
+        let lines = [pokemon + (item ? ` @ ${item}` : '')];
+        if (ability) lines.push(`Ability: ${ability}`);
+        if (tera) lines.push(`Tera Type: ${tera}`);
+
+        const evsParts = [];
+        if (evs.hp > 0) evsParts.push(`${evs.hp} HP`);
+        if (evs.atk > 0) evsParts.push(`${evs.atk} Atk`);
+        if (evs.def > 0) evsParts.push(`${evs.def} Def`);
+        if (evs.spa > 0) evsParts.push(`${evs.spa} SpA`);
+        if (evs.spd > 0) evsParts.push(`${evs.spd} SpD`);
+        if (evs.spe > 0) evsParts.push(`${evs.spe} Spe`);
+        if (evsParts.length > 0) lines.push(`EVs: ${evsParts.join(' / ')}`);
+
+        const ivsParts = [];
+        if (ivs.hp < 31) ivsParts.push(`${ivs.hp} HP`);
+        if (ivs.atk < 31) ivsParts.push(`${ivs.atk} Atk`);
+        if (ivs.def < 31) ivsParts.push(`${ivs.def} Def`);
+        if (ivs.spa < 31) ivsParts.push(`${ivs.spa} SpA`);
+        if (ivs.spd < 31) ivsParts.push(`${ivs.spd} SpD`);
+        if (ivs.spe < 31) ivsParts.push(`${ivs.spe} Spe`);
+        if (ivsParts.length > 0) lines.push(`IVs: ${ivsParts.join(' / ')}`);
+
+        if (nature) lines.push(`${nature} Nature`);
+
+        moves.forEach(m => lines.push(`- ${m}`));
+
+        document.getElementById('build-preview').textContent = lines.join('\n');
+    }
+
+    function populateBuilderOptions(data) {
+        // Items
+        const itemSelect = document.getElementById('build-item');
+        data.items.forEach(i => {
+            const opt = document.createElement('option');
+            opt.value = i.name;
+            opt.textContent = `${i.name} (${i.percentage.toFixed(1)}%)`;
+            itemSelect.appendChild(opt);
+        });
+
+        // Abilities
+        const abilitySelect = document.getElementById('build-ability');
+        data.abilities.forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = a.name;
+            opt.textContent = `${a.name} (${a.percentage.toFixed(1)}%)`;
+            abilitySelect.appendChild(opt);
+        });
+
+        // Moves
+        const moveSelects = ['build-move1', 'build-move2', 'build-move3', 'build-move4'];
+        moveSelects.forEach(id => {
+            const sel = document.getElementById(id);
+            data.moves.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.name;
+                opt.textContent = `${m.name} (${m.percentage.toFixed(1)}%)`;
+                sel.appendChild(opt);
+            });
+        });
+
+        // Add change listeners
+        document.querySelectorAll('.builder-select, .ev-input').forEach(el => {
+            el.addEventListener('change', updatePreview);
+            el.addEventListener('input', () => { updateEvTotal(); updatePreview(); });
+        });
+    }
+
+    function render(data) {
+        pokemonData = data;
+
+        document.getElementById('pokemon-sprite').src = getSprite(data.name, data.sprite_name);
+        document.getElementById('pokemon-name').textContent = data.name;
+        document.getElementById('pokemon-rank').textContent = '#' + data.rank;
+        document.getElementById('pokemon-usage').textContent = data.usage.toFixed(2) + '%';
+
+        document.getElementById('moves-list').innerHTML = data.moves.map((m, i) => statBar(m.name, m.percentage, 'move', i)).join('');
+        document.getElementById('items-list').innerHTML = data.items.map((i, idx) => statBar(i.name, i.percentage, 'item', idx)).join('');
+        document.getElementById('abilities-list').innerHTML = data.abilities.map((a, i) => statBar(a.name, a.percentage, 'ability', i)).join('');
+
+        if (data.tera_types && data.tera_types.length > 0) {
+            document.getElementById('tera-list').innerHTML = data.tera_types.map(t => teraBadge(t.name, t.percentage)).join('');
+            document.getElementById('tera-section').classList.remove('hidden');
+        } else {
+            document.getElementById('tera-section').classList.add('hidden');
+        }
+
+        document.getElementById('spreads-list').innerHTML = data.spreads.map((s, i) => spreadCard(s, i)).join('');
+        document.getElementById('teammates-list').innerHTML = data.teammates.map(t => teammateCard(t)).join('');
+
+        populateBuilderOptions(data);
+        updatePreview();
+
+        // Carregar tipos e fraquezas
+        renderTypeWeaknesses(data.name);
+    }
+
+    async function loadData() {
+        try {
+            let url = `/api/pokemon/${FORMAT_CODE}/${encodeURIComponent(POKEMON_NAME)}?rating=${RATING}`;
+            if (MONTH) url += `&month=${MONTH}`;
+
+            const res = await fetch(url);
+            if (!res.ok) throw new Error();
+
+            const data = await res.json();
+            render(data);
+
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('pokemon-details').classList.remove('hidden');
+        } catch (e) {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('error').classList.remove('hidden');
+        }
+    }
+
+    function openModal(customSet = false) {
+        if (!pokemonData) return;
+        const text = customSet ? document.getElementById('build-preview').textContent : pokemonData.showdown_set;
+        document.getElementById('export-text').value = text;
+        document.getElementById('export-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+        document.getElementById('export-modal').classList.add('hidden');
+    }
+
+    function copySet() {
+        const ta = document.getElementById('export-text');
+        ta.select();
+        document.execCommand('copy');
+        alert('Copiado!');
+    }
+
+    document.getElementById('export-btn').addEventListener('click', () => openModal(false));
+    document.getElementById('export-custom-btn').addEventListener('click', () => openModal(true));
+    document.getElementById('export-modal').addEventListener('click', e => { if(e.target.id === 'export-modal') closeModal(); });
+
+    loadData();
+</script>
+{% endblock %}

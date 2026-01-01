@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}PokeStatsBR - Estatísticas Pokémon Showdown{% endblock %}
+
+{% block head %}
+<style>
+    .hero { text-align: center; padding: 3rem 0; }
+    .hero h1 { font-size: 3rem; font-weight: 800; }
+    .hero h1 span { color: var(--secondary); }
+    .hero p { color: var(--text-secondary); margin-top: 0.5rem; }
+
+    .section-title { font-size: 1.5rem; text-align: center; margin: 2rem 0; }
+
+    .category { margin-bottom: 2rem; }
+    .category-title {
+        font-size: 1.1rem;
+        color: var(--primary);
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .formats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1rem;
+    }
+
+    .format-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        transition: all 0.2s;
+    }
+    .format-card:hover {
+        background: var(--bg-card-hover);
+        border-color: var(--primary);
+        transform: translateY(-2px);
+    }
+    .format-icon { font-size: 1.5rem; }
+    .format-info { flex: 1; }
+    .format-name { font-weight: 600; display: block; }
+    .format-code { font-size: 0.75rem; color: var(--text-muted); font-family: monospace; }
+    .format-arrow { color: var(--text-muted); }
+    .format-card:hover .format-arrow { color: var(--primary); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <section class="hero">
+        <h1>PokeStats<span>BR</span></h1>
+        <p>Estatísticas do Pokémon Showdown em português</p>
+    </section>
+
+    <h2 class="section-title">Escolha um Formato</h2>
+
+    {% for key, category in formats.items() %}
+    <div class="category">
+        <h3 class="category-title">{{ category.nome }}</h3>
+        <div class="formats-grid">
+            {% for code, name in category.formatos.items() %}
+            <a href="/format/{{ code }}" class="format-card">
+                <div class="format-icon">
+                    {% if 'vgc' in code %}🏆{% elif 'doubles' in code %}👥{% elif 'ou' in code %}🌟{% else %}📋{% endif %}
+                </div>
+                <div class="format-info">
+                    <span class="format-name">{{ name }}</span>
+                    <span class="format-code">{{ code }}</span>
+                </div>
+                <span class="format-arrow">→</span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

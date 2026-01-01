@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Sobre - PokeStatsBR{% endblock %}
+
+{% block head %}
+<style>
+    .about { max-width: 800px; margin: 0 auto; }
+    .about h1 { font-size: 2rem; margin-bottom: 2rem; text-align: center; }
+    .about h2 { color: var(--primary); margin: 2rem 0 1rem; font-size: 1.25rem; }
+    .about p, .about li { color: var(--text-secondary); line-height: 1.8; margin-bottom: 1rem; }
+    .about ul { list-style: none; }
+    .about li { padding-left: 1.5rem; position: relative; }
+    .about li::before { content: '→'; position: absolute; left: 0; color: var(--primary); }
+    .about a { color: var(--primary); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="about">
+        <h1>Sobre o PokeStatsBR</h1>
+
+        <p>Estatísticas do Pokémon Showdown em português para a comunidade brasileira.</p>
+
+        <h2>Como Funciona</h2>
+        <p>Os dados são obtidos diretamente do <a href="https://www.smogon.com/stats/" target="_blank">Smogon Stats</a>, que analisa milhões de batalhas no Pokémon Showdown mensalmente.</p>
+
+        <h2>Funcionalidades</h2>
+        <ul>
+            <li>Taxa de uso de Pokémon por formato</li>
+            <li>Movimentos, Itens e Habilidades mais usados</li>
+            <li>Distribuições de EVs populares</li>
+            <li>Tipos Tera mais comuns (Gen 9)</li>
+            <li>Parceiros de time mais sinérgicos</li>
+            <li>Exportar sets para o Pokémon Showdown</li>
+        </ul>
+
+        <h2>Ratings</h2>
+        <ul>
+            <li><strong>0:</strong> Todos os jogadores</li>
+            <li><strong>1500:</strong> Jogadores intermediários</li>
+            <li><strong>1630/1695:</strong> Jogadores avançados</li>
+            <li><strong>1760/1825:</strong> Top players</li>
+        </ul>
+
+        <h2>Créditos</h2>
+        <ul>
+            <li><a href="https://www.smogon.com" target="_blank">Smogon</a> - Dados estatísticos</li>
+            <li><a href="https://pokemonshowdown.com" target="_blank">Pokémon Showdown</a> - Simulador</li>
+            <li><a href="https://munchstats.com" target="_blank">MunchStats</a> - Inspiração</li>
+        </ul>
+
+        <h2>Aviso Legal</h2>
+        <p>Este é um projeto de fã não-oficial. Pokémon e todos os nomes relacionados são marca registrada da Nintendo.</p>
+    </div>
+</div>
+{% endblock %}
