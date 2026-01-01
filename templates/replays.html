@@ -49,22 +49,18 @@
         border-radius: 12px;
         padding: 1.5rem;
         border: 1px solid var(--border-color);
-        cursor: pointer;
         transition: all 0.2s;
     }
     .replay-card:hover {
         border-color: var(--primary);
         background: var(--bg-card-hover);
     }
-    .replay-card.expanded {
-        border-color: var(--primary);
-    }
 
     .replay-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 0.5rem;
+        margin-bottom: 1rem;
     }
     .replay-players {
         font-size: 1.1rem;
@@ -74,14 +70,25 @@
         color: var(--text-muted);
         margin: 0 0.5rem;
     }
-    .replay-winner {
+    .player-name {
+        display: inline;
+    }
+    .player-name.winner {
         color: var(--primary);
+    }
+    .player-name.winner::after {
+        content: ' ★';
+        color: var(--secondary);
+    }
+    .player-name.loser {
+        color: var(--text-muted);
     }
     .replay-meta {
         display: flex;
         gap: 1rem;
         color: var(--text-secondary);
         font-size: 0.875rem;
+        align-items: center;
     }
     .replay-rating {
         background: var(--primary);
@@ -91,76 +98,73 @@
         font-weight: 600;
     }
 
-    .replay-details {
-        display: none;
-        margin-top: 1.5rem;
-        padding-top: 1.5rem;
-        border-top: 1px solid var(--border-color);
-    }
-    .replay-card.expanded .replay-details {
-        display: block;
-    }
-
-    .teams-container {
+    .teams-preview {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 2rem;
+        gap: 1rem;
+        margin-bottom: 1rem;
     }
-    @media (max-width: 768px) {
-        .teams-container {
+    @media (max-width: 600px) {
+        .teams-preview {
             grid-template-columns: 1fr;
         }
     }
 
-    .team-section {
+    .team-preview {
         background: var(--bg-secondary);
         border-radius: 8px;
-        padding: 1rem;
+        padding: 0.75rem;
     }
-    .team-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1rem;
+    .team-preview-header {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-bottom: 0.5rem;
     }
-    .team-player {
-        font-weight: 700;
-        font-size: 1.1rem;
-    }
-    .team-player.winner {
-        color: var(--primary);
-    }
-    .team-player.winner::after {
-        content: ' (Vencedor)';
-        font-size: 0.75rem;
-        opacity: 0.8;
-    }
-
-    .team-pokemon {
+    .team-preview-pokemon {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.5rem;
-        margin-bottom: 1rem;
-    }
-    .pokemon-mini {
-        display: flex;
-        align-items: center;
         gap: 0.25rem;
-        background: var(--bg-card);
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.875rem;
     }
-    .pokemon-mini img {
+    .poke-sprite {
+        width: 40px;
+        height: 40px;
+        image-rendering: pixelated;
+        background: var(--bg-card);
+        border-radius: 4px;
+        padding: 2px;
+    }
+    .poke-sprite:hover {
+        transform: scale(1.2);
+        z-index: 10;
+    }
+
+    .team-loading {
+        display: flex;
+        gap: 0.25rem;
+    }
+    .team-loading-dot {
         width: 32px;
         height: 32px;
-        image-rendering: pixelated;
+        background: var(--bg-card);
+        border-radius: 4px;
+        animation: pulse 1s ease-in-out infinite;
+    }
+    .team-loading-dot:nth-child(2) { animation-delay: 0.1s; }
+    .team-loading-dot:nth-child(3) { animation-delay: 0.2s; }
+    .team-loading-dot:nth-child(4) { animation-delay: 0.3s; }
+    .team-loading-dot:nth-child(5) { animation-delay: 0.4s; }
+    .team-loading-dot:nth-child(6) { animation-delay: 0.5s; }
+    @keyframes pulse {
+        0%, 100% { opacity: 0.4; }
+        50% { opacity: 1; }
     }
 
-    .team-actions {
+    .replay-actions {
         display: flex;
         gap: 0.5rem;
         flex-wrap: wrap;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
     }
     .btn-small {
         padding: 0.5rem 1rem;
@@ -344,6 +348,7 @@ async function loadReplays() {
     errorEl.classList.add('hidden');
     container.classList.add('hidden');
     container.innerHTML = '';
+    replaysData = {};
 
     try {
         const response = await fetch(`/api/replays/${currentFormat}`);
@@ -353,7 +358,11 @@ async function loadReplays() {
             throw new Error(data.error);
         }
 
-        renderReplays(data.replays || []);
+        const replays = data.replays || [];
+        renderReplays(replays);
+
+        // Carregar detalhes de todos os replays em paralelo
+        loadAllReplayDetails(replays);
     } catch (err) {
         console.error(err);
         errorEl.classList.remove('hidden');
@@ -369,6 +378,10 @@ function formatDate(timestamp) {
     return date.toLocaleDateString('pt-BR') + ' ' + date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
 }
 
+function getSpriteUrl(spriteName) {
+    return `https://play.pokemonshowdown.com/sprites/gen5/${spriteName}.png`;
+}
+
 function renderReplays(replays) {
     if (replays.length === 0) {
         container.innerHTML = '<div class="error"><p>Nenhum replay encontrado para este formato.</p></div>';
@@ -376,24 +389,55 @@ function renderReplays(replays) {
         return;
     }
 
-    container.innerHTML = replays.map((replay, index) => `
-        <div class="replay-card" data-id="${replay.id}" onclick="toggleReplay('${replay.id}')">
+    container.innerHTML = replays.map((replay) => `
+        <div class="replay-card" id="card-${replay.id}">
             <div class="replay-header">
                 <div class="replay-players">
-                    <span>${replay.p1 || 'Jogador 1'}</span>
+                    <span class="player-name" id="p1-${replay.id}">${replay.p1 || 'Jogador 1'}</span>
                     <span class="replay-vs">vs</span>
-                    <span>${replay.p2 || 'Jogador 2'}</span>
+                    <span class="player-name" id="p2-${replay.id}">${replay.p2 || 'Jogador 2'}</span>
                 </div>
                 <div class="replay-meta">
                     ${replay.rating ? `<span class="replay-rating">${replay.rating}</span>` : ''}
                     <span>${formatDate(replay.uploadtime)}</span>
                 </div>
             </div>
-            <div class="replay-details" id="details-${replay.id}">
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <p>Carregando times...</p>
+
+            <div class="teams-preview">
+                <div class="team-preview">
+                    <div class="team-preview-header">Time ${replay.p1 || 'P1'}</div>
+                    <div class="team-preview-pokemon" id="team1-${replay.id}">
+                        <div class="team-loading">
+                            <div class="team-loading-dot"></div>
+                            <div class="team-loading-dot"></div>
+                            <div class="team-loading-dot"></div>
+                            <div class="team-loading-dot"></div>
+                            <div class="team-loading-dot"></div>
+                            <div class="team-loading-dot"></div>
+                        </div>
+                    </div>
                 </div>
+                <div class="team-preview">
+                    <div class="team-preview-header">Time ${replay.p2 || 'P2'}</div>
+                    <div class="team-preview-pokemon" id="team2-${replay.id}">
+                        <div class="team-loading">
+                            <div class="team-loading-dot"></div>
+                            <div class="team-loading-dot"></div>
+                            <div class="team-loading-dot"></div>
+                            <div class="team-loading-dot"></div>
+                            <div class="team-loading-dot"></div>
+                            <div class="team-loading-dot"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="replay-actions">
+                <button class="btn btn-small" onclick="showExport('${replay.id}', 1)">Exportar Time 1</button>
+                <button class="btn btn-small" onclick="showExport('${replay.id}', 2)">Exportar Time 2</button>
+                <button class="btn btn-small btn-analyze" onclick="analyzeTeam('${replay.id}', 1)">Analisar T1</button>
+                <button class="btn btn-small btn-analyze" onclick="analyzeTeam('${replay.id}', 2)">Analisar T2</button>
+                <a href="https://replay.pokemonshowdown.com/${replay.id}" target="_blank" class="btn btn-secondary btn-small">Ver Replay</a>
             </div>
         </div>
     `).join('');
@@ -401,99 +445,120 @@ function renderReplays(replays) {
     container.classList.remove('hidden');
 }
 
-async function toggleReplay(replayId) {
-    const card = document.querySelector(`[data-id="${replayId}"]`);
-    const details = document.getElementById(`details-${replayId}`);
+async function loadAllReplayDetails(replays) {
+    // Carregar detalhes em lotes para não sobrecarregar
+    const batchSize = 5;
+    for (let i = 0; i < replays.length; i += batchSize) {
+        const batch = replays.slice(i, i + batchSize);
+        await Promise.all(batch.map(replay => loadReplayDetail(replay.id)));
+    }
+}
 
-    if (card.classList.contains('expanded')) {
-        card.classList.remove('expanded');
-        return;
+async function loadReplayDetail(replayId) {
+    try {
+        const response = await fetch(`/api/replay/${replayId}`);
+        const data = await response.json();
+
+        if (data.error) {
+            console.error(`Erro ao carregar ${replayId}:`, data.error);
+            return;
+        }
+
+        replaysData[replayId] = data;
+        updateReplayCard(replayId, data);
+    } catch (err) {
+        console.error(`Erro ao carregar ${replayId}:`, err);
+    }
+}
+
+function updateReplayCard(replayId, data) {
+    // Atualizar times
+    const team1El = document.getElementById(`team1-${replayId}`);
+    const team2El = document.getElementById(`team2-${replayId}`);
+
+    if (team1El && data.team1) {
+        team1El.innerHTML = data.team1.map(p => `
+            <img class="poke-sprite" src="${getSpriteUrl(p.sprite_name)}"
+                 onerror="this.src='https://play.pokemonshowdown.com/sprites/gen5/0.png'"
+                 alt="${p.name}" title="${p.name}">
+        `).join('');
     }
 
-    // Fechar outros
-    document.querySelectorAll('.replay-card.expanded').forEach(c => c.classList.remove('expanded'));
+    if (team2El && data.team2) {
+        team2El.innerHTML = data.team2.map(p => `
+            <img class="poke-sprite" src="${getSpriteUrl(p.sprite_name)}"
+                 onerror="this.src='https://play.pokemonshowdown.com/sprites/gen5/0.png'"
+                 alt="${p.name}" title="${p.name}">
+        `).join('');
+    }
 
-    card.classList.add('expanded');
+    // Atualizar vencedor
+    const p1El = document.getElementById(`p1-${replayId}`);
+    const p2El = document.getElementById(`p2-${replayId}`);
 
-    // Carregar detalhes se ainda nao carregou
-    if (!replaysData[replayId]) {
-        try {
-            const response = await fetch(`/api/replay/${replayId}`);
-            const data = await response.json();
+    if (data.winner && p1El && p2El) {
+        // Limpar classes anteriores
+        p1El.classList.remove('winner', 'loser');
+        p2El.classList.remove('winner', 'loser');
 
-            if (data.error) {
-                throw new Error(data.error);
+        // Normalizar nomes para comparação
+        const winner = data.winner.toLowerCase().trim().replace(/\s+/g, '');
+        const p1Name = (data.p1 || '').toLowerCase().trim().replace(/\s+/g, '');
+        const p2Name = (data.p2 || '').toLowerCase().trim().replace(/\s+/g, '');
+
+        // Verificar qual jogador é o vencedor de forma exclusiva
+        let p1IsWinner = false;
+        let p2IsWinner = false;
+
+        // Primeiro tenta match exato
+        if (winner === p1Name) {
+            p1IsWinner = true;
+        } else if (winner === p2Name) {
+            p2IsWinner = true;
+        } else {
+            // Se não houver match exato, calcular similaridade
+            const p1Match = winner.includes(p1Name) || p1Name.includes(winner);
+            const p2Match = winner.includes(p2Name) || p2Name.includes(winner);
+
+            // Só marca se apenas UM jogador der match
+            if (p1Match && !p2Match) {
+                p1IsWinner = true;
+            } else if (p2Match && !p1Match) {
+                p2IsWinner = true;
+            } else if (p1Match && p2Match) {
+                // Ambos dão match - usar o que tiver nome mais longo como critério
+                // pois é mais provável ser o match correto
+                if (p1Name.length > p2Name.length && winner.includes(p1Name)) {
+                    p1IsWinner = true;
+                } else if (p2Name.length > p1Name.length && winner.includes(p2Name)) {
+                    p2IsWinner = true;
+                }
+                // Se ainda não decidiu, não marca ninguém
             }
+        }
 
-            replaysData[replayId] = data;
-            renderReplayDetails(replayId, data);
-        } catch (err) {
-            details.innerHTML = `<div class="error"><p>Erro ao carregar: ${err.message}</p></div>`;
+        if (p1IsWinner) {
+            p1El.classList.add('winner');
+            p2El.classList.add('loser');
+        } else if (p2IsWinner) {
+            p2El.classList.add('winner');
+            p1El.classList.add('loser');
         }
     }
 }
 
-function getSpriteUrl(spriteName) {
-    return `https://play.pokemonshowdown.com/sprites/gen5/${spriteName}.png`;
-}
-
-function renderReplayDetails(replayId, data) {
-    const details = document.getElementById(`details-${replayId}`);
-    const p1IsWinner = data.winner === data.p1;
-    const p2IsWinner = data.winner === data.p2;
-
-    details.innerHTML = `
-        <div class="teams-container">
-            <div class="team-section">
-                <div class="team-header">
-                    <span class="team-player ${p1IsWinner ? 'winner' : ''}">${data.p1 || 'Jogador 1'}</span>
-                </div>
-                <div class="team-pokemon">
-                    ${(data.team1 || []).map(p => `
-                        <div class="pokemon-mini">
-                            <img src="${getSpriteUrl(p.sprite_name)}" onerror="this.src='https://play.pokemonshowdown.com/sprites/gen5/0.png'" alt="${p.name}">
-                            <span>${p.name}</span>
-                        </div>
-                    `).join('')}
-                </div>
-                <div class="team-actions">
-                    <button class="btn btn-small" onclick="event.stopPropagation(); showExport('${replayId}', 1)">Exportar Time</button>
-                    <button class="btn btn-small btn-analyze" onclick="event.stopPropagation(); analyzeTeam('${replayId}', 1)">Analisar</button>
-                </div>
-            </div>
-            <div class="team-section">
-                <div class="team-header">
-                    <span class="team-player ${p2IsWinner ? 'winner' : ''}">${data.p2 || 'Jogador 2'}</span>
-                </div>
-                <div class="team-pokemon">
-                    ${(data.team2 || []).map(p => `
-                        <div class="pokemon-mini">
-                            <img src="${getSpriteUrl(p.sprite_name)}" onerror="this.src='https://play.pokemonshowdown.com/sprites/gen5/0.png'" alt="${p.name}">
-                            <span>${p.name}</span>
-                        </div>
-                    `).join('')}
-                </div>
-                <div class="team-actions">
-                    <button class="btn btn-small" onclick="event.stopPropagation(); showExport('${replayId}', 2)">Exportar Time</button>
-                    <button class="btn btn-small btn-analyze" onclick="event.stopPropagation(); analyzeTeam('${replayId}', 2)">Analisar</button>
-                </div>
-            </div>
-        </div>
-        <div style="margin-top: 1rem; text-align: center;">
-            <a href="${data.replay_url}" target="_blank" class="btn btn-secondary btn-small">Ver Replay Completo</a>
-        </div>
-    `;
-}
-
 function showExport(replayId, playerNum) {
     const data = replaysData[replayId];
-    if (!data) return;
+    if (!data) {
+        alert('Aguarde o carregamento dos dados...');
+        return;
+    }
 
     const exportText = playerNum === 1 ? data.export1 : data.export2;
     const playerName = playerNum === 1 ? data.p1 : data.p2;
 
     document.getElementById('export-textarea').value = exportText;
-    document.querySelector('.export-title').textContent = `Exportar Time - ${playerName}`;
+    document.querySelector('#export-modal .export-title').textContent = `Exportar Time - ${playerName}`;
     document.getElementById('export-modal').classList.add('active');
 }
 
@@ -510,7 +575,10 @@ function copyExport() {
 
 async function analyzeTeam(replayId, playerNum) {
     const data = replaysData[replayId];
-    if (!data) return;
+    if (!data) {
+        alert('Aguarde o carregamento dos dados...');
+        return;
+    }
 
     const team = playerNum === 1 ? data.team1 : data.team2;
     const playerName = playerNum === 1 ? data.p1 : data.p2;
@@ -550,7 +618,6 @@ async function analyzeTeam(replayId, playerNum) {
 }
 
 function formatAnalysis(text) {
-    // Converter markdown basico para HTML
     return text
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
         .replace(/^### (.+)$/gm, '<h3>$1</h3>')
